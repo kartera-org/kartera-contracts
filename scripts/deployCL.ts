@@ -2,20 +2,26 @@ import { ethers } from "hardhat";
 
 async function main() {
   // const factory = await ethers.getContractFactory("Counter");
-  const CLPriceFeed = await ethers.getContractFactory("CLPriceFeed");
+  // const CLPriceFeed = await ethers.getContractFactory("CLPriceFeed");
+  // const CryptoTopTen = await ethers.getContractFactory("CryptoTopTen");
+  const UniswapPriceOracle = await ethers.getContractFactory("UniswapPriceOracle");
 
   // If we had constructor arguments, they would be passed into deploy()
   //   let dappToken = await factory.deploy(1000000);
-  let cLPriceFeed = await CLPriceFeed.deploy();
+  // let cryptoTopTen = await CryptoTopTen.deploy();
+  let uniswapPriceOracle = await UniswapPriceOracle.deploy();
 
   // The address the Contract WILL have once mined
-  console.log('karteraToken contract id: ', cLPriceFeed.address);
+  // console.log('karteraToken contract id: ', cryptoTopTen.address);
+  console.log('UniswapPriceOracle contract id: ', uniswapPriceOracle.address);
 
   // The transaction that was sent to the network to deploy the Contract
-  console.log('transaction id: ', cLPriceFeed.deployTransaction.hash);
+  // console.log('transaction id: ', cryptoTopTen.deployTransaction.hash);
+  console.log('transaction id: ', uniswapPriceOracle.deployTransaction.hash);
 
   // The contract is NOT deployed yet; we must wait until it is mined
-  await cLPriceFeed.deployed();
+  // await cryptoTopTen.deployed();
+  await uniswapPriceOracle.deployed();
 
 }
 

@@ -5,6 +5,7 @@ pragma solidity  >=0.4.22 <0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "hardhat/console.sol";
 
 contract CryptoTopTen is ERC20("Crypto Top Ten", "CTT"), Ownable {
@@ -73,8 +74,33 @@ contract CryptoTopTen is ERC20("Crypto Top Ten", "CTT"), Ownable {
         return activecons;
     }
 
-    function constituentPrice(address addr) public pure returns (uint256) {
-        return 1;
+    function constituentPrice(address addr) public view returns (uint256) {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(addr);
+        (
+            uint80 roundID, 
+            int price,
+            uint startedAt,
+            uint timeStamp,
+            uint80 answeredInRound
+        ) = priceFeed.latestRoundData();
+        // console.log(priceFeed.decimals());
+        // console.log(roundID );
+        require(timeStamp > 0, "Round not complete");
+        return uint256(price);
+    }
+    function constituentPriceDecimals(address addr) public view returns (uint8) {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(addr);
+        // (
+        //     uint80 roundID, 
+        //     int price,
+        //     uint startedAt,
+        //     uint timeStamp,
+        //     uint80 answeredInRound
+        // ) = priceFeed.latestRoundData();
+        // console.log(priceFeed.decimals());
+        // console.log(roundID );
+        // require(timeStamp > 0, "Round not complete");
+        return priceFeed.decimals();
     }
 
     function totalDeposit() public view returns(uint256) {
