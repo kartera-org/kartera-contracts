@@ -8,62 +8,78 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "hardhat/console.sol";
 
-contract CryptoTopTen is ERC20("Crypto Top Ten", "CTT"), Ownable {
+contract CryptoTopTen is ERC20("jjffrr", "OKU"), Ownable {
     struct Constituent{
         address contractAddress;
+        address clPriceAddress;
         uint8 weight;
         uint8 weightTolerance;
         uint8 id;
         bool active;
         uint256 totalDeposit;
     }
-    uint8   _numberOfConstituents = 0;
-    uint   _initialContractValue = 1000;
-    uint256   _divisor = 1;
-    mapping(address => Constituent)  constituents;
-    mapping(uint8 => address)  contractAddress;
+    uint8 _numberOfConstituents = 0;
+    uint _initialContractValue = 1000;
+    mapping (address => Constituent)  constituents;
+    mapping (uint8 => address)  contractAddress;
+    address currencyAddress = 	0x9326BFA02ADD2366b30bacB125260Af641031331;
+    uint currencyDecimal = 100000000;
 
-    function addConstituent(address conaddr, uint8 weight_) external onlyOwner {
+    function addConstituent(address conaddr, uint8 weight_, address clPriceAddress_) external onlyOwner {
         require(constituents[conaddr].contractAddress != conaddr || !constituents[conaddr].active, "Contract already exists and is active");
         constituents[conaddr].contractAddress = conaddr;
         constituents[conaddr].weight = weight_;
+        constituents[conaddr].clPriceAddress = clPriceAddress_;
         constituents[conaddr].totalDeposit = 0;
         constituents[conaddr].active = true;
+        constituents[conaddr].weightTolerance = 100;
         constituents[conaddr].id = _numberOfConstituents;
         contractAddress[_numberOfConstituents] = conaddr;
         _numberOfConstituents++;
 
     }
 
-    function removeConstituent(address conaddr) public onlyOwner{
+    function removeConstituent(address conaddr) public onlyOwner {
         require(constituents[conaddr].contractAddress == conaddr, "Contract does not exist");
         constituents[conaddr].active = false;
     }
 
-    function updateConstituent(address conaddr, uint8 weight_) external onlyOwner{
+    function updateConstituent(address conaddr, uint8 weight_) external onlyOwner {
 
         require(constituents[conaddr].contractAddress == conaddr, "Contract does not exist");
         constituents[conaddr].weight = weight_;
     }
 
     function makeDeposit(address conaddr, uint256 numberoftokens) external payable {
-        require(constituents[conaddr].contractAddress == conaddr, "Contract does not exist");
         bool acceptingDeposits = acceptingDeposit(conaddr);
         require(acceptingDeposits, "No further deposits accepeted for this contract");
         uint256 amount = numberoftokens * constituentPrice(conaddr);
-        uint256 d = newDivisor(amount);
         uint256 minttokens = tokensForDeposit(amount);
         ERC20 token = ERC20(conaddr);
-        token.transferFrom(msg.sender, address(this), numberoftokens);
+        // token.transferFrom(msg.sender, address(this), numberoftokens);
         _mint(msg.sender, minttokens);
-        updateDivisor(d);
+        constituents[conaddr].totalDeposit += numberoftokens;
     }
 
-    function numberOfConstituents() public view returns(uint) {
+    function getConstituentAddress(uint8 indx) public view returns (address) {
+        require(indx < numberOfConstituents(), "Index exceeds array size");
+        return contractAddress[indx];
+    }
+
+    function getConstituentDetails(address conaddr) public view returns (address, uint8, uint8, bool, uint256) {
+        require(constituents[conaddr].contractAddress == conaddr, "Contract does not exist");
+        return (constituents[conaddr].clPriceAddress,
+                constituents[conaddr].weight,
+                constituents[conaddr].weightTolerance,
+                constituents[conaddr].active,
+                constituents[conaddr].totalDeposit);
+    }
+
+    function numberOfConstituents() public view returns (uint) {
         return _numberOfConstituents;
     }
 
-    function numberOfActiveConstituents() public view returns(uint) {
+    function numberOfActiveConstituents() public view returns (uint) {
         uint activecons = 0;
         for(uint8 i = 0; i < _numberOfConstituents; i++) {
             address addr = contractAddress[i];
@@ -75,7 +91,8 @@ contract CryptoTopTen is ERC20("Crypto Top Ten", "CTT"), Ownable {
     }
 
     function constituentPrice(address addr) public view returns (uint256) {
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(addr);
+        int curprice = currencyPrice();
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(constituents[addr].clPriceAddress);
         (
             uint80 roundID, 
             int price,
@@ -83,24 +100,24 @@ contract CryptoTopTen is ERC20("Crypto Top Ten", "CTT"), Ownable {
             uint timeStamp,
             uint80 answeredInRound
         ) = priceFeed.latestRoundData();
-        // console.log(priceFeed.decimals());
-        // console.log(roundID );
         require(timeStamp > 0, "Round not complete");
-        return uint256(price);
+        uint256 conprice = uint256(curprice * price) / power(10, priceFeed.decimals());
+        return conprice;
     }
-    function constituentPriceDecimals(address addr) public view returns (uint8) {
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(addr);
-        // (
-        //     uint80 roundID, 
-        //     int price,
-        //     uint startedAt,
-        //     uint timeStamp,
-        //     uint80 answeredInRound
-        // ) = priceFeed.latestRoundData();
-        // console.log(priceFeed.decimals());
-        // console.log(roundID );
-        // require(timeStamp > 0, "Round not complete");
-        return priceFeed.decimals();
+
+    function currencyPrice() public view returns (int) {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(currencyAddress);
+        (
+            uint80 roundID, 
+            int price,
+            uint startedAt,
+            uint timeStamp,
+            uint80 answeredInRound
+        ) = priceFeed.latestRoundData();
+        console.log(priceFeed.decimals());
+        console.log(roundID );
+        require(timeStamp > 0, "Round not complete");
+        return price;
     }
 
     function totalDeposit() public view returns(uint256) {
@@ -124,25 +141,22 @@ contract CryptoTopTen is ERC20("Crypto Top Ten", "CTT"), Ownable {
     function tokenPrice() public view returns (uint256) {
         uint256 totaldeposit = totalDeposit();
         if (totaldeposit > 0) {
-            return totalDeposit() / _divisor;
+            return totalDeposit() / totalSupply();
         }
-        return _initialContractValue;
+        return _initialContractValue * currencyDecimal;
+    }
+
+    function exchangneRate(address conaddr) public view returns (uint256) {
+        if(constituents[conaddr].contractAddress != conaddr || !constituents[conaddr].active){
+            return 0;
+        }
+        uint256 amount = constituentPrice(conaddr) * power(10, decimals());
+        uint256 tokens = tokensForDeposit(amount);
+        return tokens;
     }
 
     function tokensForDeposit(uint amount) public view returns (uint256) {
-        return power(10, 18) * amount / tokenPrice();
-    }
-
-    function divisor() public view returns (uint256) {
-        return _divisor;
-    }
-
-    function newDivisor(uint256 amount) public view returns (uint256) {
-        uint256 totaldeposit = totalDeposit();
-        if (totaldeposit>0) {
-            return _divisor * (totaldeposit + amount) / totaldeposit;
-        }
-        return amount / _initialContractValue;
+        return amount / tokenPrice();
     }
 
     function acceptingDeposit(address conaddr) public view returns (bool) {
@@ -158,10 +172,6 @@ contract CryptoTopTen is ERC20("Crypto Top Ten", "CTT"), Ownable {
             return true;
         }
         return false;
-    }
-
-    function updateDivisor(uint256 d) internal {
-        _divisor = d;
     }
 
     function power(uint256 a, uint8 b) internal pure returns(uint256) {

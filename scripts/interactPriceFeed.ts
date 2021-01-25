@@ -10,10 +10,10 @@ function tokens(n: string) {
 
 // const clPriceFeedContract = "0x52480065b0AB39117F737E61AeD44D5E1B0005DE";
 // const txid = "0x3ca398665516d402c0d7f07d8a050f7de42152324434038516cb06ce4771fc57";
-const cryptoTopTenAddr = "0x324048a600DE0Cb831ef359E15c671c113f9255c";
-const cryptoTopTenTXID = "0x63a0eb4717452a0b9e1156bfe3e08b874d1bfb38bb0d0a2321c20d5a177ecfdf";
+const cryptoTopTenAddr = "0xAc170083E2DFA595A4fB3FAb1295feF1383f03a6";
+const cryptoTopTenTXID = "0xbdd5095d67caa11b319588b2242f6554bcffb5fe9f155743c8d582cdc4f42c42";
 const addresses = [
-    // {name:"AAVEETH", addr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
+    {name:"AAVEETH", addr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
     // {name:"AMPLETH", addr:"0x562C092bEb3a6DF77aDf0BB604F52c018E4f2814"},
     {name:"AUDUSD", addr:"0x5813A90f826e16dB392abd2aF7966313fc1fd5B8"},
     // {name:"BATETH", addr:"0x0e4fcEC26c9f85c3D714370c98f43C4E02Fc35Ae"},
@@ -63,18 +63,20 @@ async function main() {
     const [owner, addr1] = await ethers.getSigners();
     // console.log('owner: ', owner );
     // console.log('addr1: ', addr1 );
-    const accounts = await ethers.provider.listAccounts();
-    console.log(accounts[0]);
+    // const accounts = await ethers.provider.listAccounts();
+    // console.log(accounts[0]);
     const CryptoTopTen = (await ethers.getContractFactory("CryptoTopTen")) as CryptoTopTen__factory;
     const cryptoTopTen = await CryptoTopTen.attach(cryptoTopTenAddr);
-    for(let i=0; i< addresses.length; i++){
-      // let price = await cryptoTopTen.constituentPrice(addresses[i].addr);
-      // console.log('CL Price recieved ', price.toString() );
-      let decimals = await cryptoTopTen.constituentPriceDecimals(addresses[i].addr);
-      console.log('CL decimal of address ', addresses[i].addr, ': ' , decimals.toString() );
-      // let priceindecimals = parseInt(price.toString()) / Math.pow(10, decimals);
-      // console.log('price in decimals: ', priceindecimals)
-    }
+    const ethprice = await cryptoTopTen.currencyPrice();
+    console.log('ethprice: ', ethprice.toString() );
+    // for(let i=0; i< addresses.length; i++){
+      let price = await cryptoTopTen.constituentPrice(addresses[0].addr);
+      console.log('CL Price recieved ', price.toString() );
+    //   let decimals = await cryptoTopTen.constituentPriceDecimals(addresses[i].addr);
+    //   console.log('CL decimal of address ', addresses[i].addr, ': ' , decimals.toString() );
+    //   // let priceindecimals = parseInt(price.toString()) / Math.pow(10, decimals);
+    //   // console.log('price in decimals: ', priceindecimals)
+    // }
   }
 
 
