@@ -1,8 +1,8 @@
 import { ethers } from "hardhat";
 import { KarteraToken__factory, KarteraToken } from "../typechain";
 import { CryptoTopTen__factory, CryptoTopTen } from "../typechain";
-import { MockToken1__factory, MockToken1 } from "../typechain";
-import { MockToken2__factory, MockToken2 } from "../typechain";
+// import { MockToken1__factory, MockToken1 } from "../typechain";
+// import { MockToken2__factory, MockToken2 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
 

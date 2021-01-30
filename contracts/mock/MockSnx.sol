@@ -7,7 +7,7 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MockToken1 is ERC20('Mock Token 1', 'MT1'), Ownable{
+contract MockSnx is ERC20('SNX Mock Token', 'mSNX'), Ownable{
     uint _counter;
     uint256 _totalSupply;
     constructor() public{

@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "hardhat/console.sol";
 
-contract CryptoTopTen is ERC20("jjffrr", "OKU"), Ownable {
+contract CryptoTopTen is ERC20("Defi Token", "OKU"), Ownable {
     struct Constituent{
         address contractAddress;
         address clPriceAddress;
@@ -27,6 +27,7 @@ contract CryptoTopTen is ERC20("jjffrr", "OKU"), Ownable {
 
     function addConstituent(address conaddr, uint8 weight_, address clPriceAddress_) external onlyOwner {
         require(constituents[conaddr].contractAddress != conaddr || !constituents[conaddr].active, "Contract already exists and is active");
+        require( TotalConstituentWeight() + weight_ <= 100, 'Total Weight Exceeds 100%');
         constituents[conaddr].contractAddress = conaddr;
         constituents[conaddr].weight = weight_;
         constituents[conaddr].clPriceAddress = clPriceAddress_;
@@ -77,6 +78,15 @@ contract CryptoTopTen is ERC20("jjffrr", "OKU"), Ownable {
 
     function numberOfConstituents() public view returns (uint) {
         return _numberOfConstituents;
+    }
+
+    function TotalConstituentWeight() public view returns (uint) {
+        uint weight =0;
+        for(uint8 i = 0; i < _numberOfConstituents; i++) {
+            address addr = contractAddress[i];
+            weight += constituents[addr].weight;
+        }
+
     }
 
     function numberOfActiveConstituents() public view returns (uint) {
