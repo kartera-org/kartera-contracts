@@ -42,11 +42,11 @@ describe("CLPriceFeed Token", function () {
         });
     });
 
-    describe("CL Price Feed", function () {
-        it("Received CL Price Feed", async function () {
-             let price = await priceToken.getLatestPrice();
-             console.log(price);
-        })
-    })
+    // describe("CL Price Feed", function () {
+    //     it("Received CL Price Feed", async function () {
+    //          let price = await priceToken.getLatestPrice();
+    //          console.log(price);
+    //     })
+    // })
 });
 

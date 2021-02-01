@@ -1,10 +1,3 @@
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
-// module.exports = {
-//   solidity: "0.7.3",
-// };
-
 // hardhat.config.ts
 import { config as dotEnvConfig } from "dotenv";
 dotEnvConfig();
@@ -14,6 +7,8 @@ import { HardhatUserConfig } from "hardhat/types";
 import "@nomiclabs/hardhat-waffle";
 import "hardhat-typechain";
 import "@nomiclabs/hardhat-etherscan";
+import "@nomiclabs/hardhat-waffle";
+
 // TODO: reenable solidity-coverage when it works
 // import "solidity-coverage";
 
@@ -27,14 +22,25 @@ const KOVAN_PRIVATE_KEY = process.env.KOVAN_PRIVATE_KEY || "";
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   solidity: {
-    compilers: [{ version: "0.6.6", settings: {} }],
+    compilers: [{ 
+      version: "0.6.12", 
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200,
+        },
+      } 
+    }],
   },
   networks: {
     hardhat: {},
-    // localhost: {
-    //   url: `HTTP://127.0.0.1:7545`,
-    //   accounts: [localhost_PRIVATE_KEY],
-    // },
+    localhost: {
+      // gas: "auto",
+      // blockGasLimit: 1000000,
+      // gasMultiplier: 10,
+      // url: `HTTP://127.0.0.1:7545`,
+      // accounts: [localhost_PRIVATE_KEY],
+    },
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${INFURA_API_KEY}`,
       accounts: [RINKEBY_PRIVATE_KEY],
@@ -52,6 +58,9 @@ const config: HardhatUserConfig = {
     // Obtain one at https://etherscan.io/
     apiKey: ETHERSCAN_API_KEY,
   },
+  mocha: {
+    timeout: 100000
+  }
 };
 
 export default config;
