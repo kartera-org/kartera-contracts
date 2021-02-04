@@ -3,10 +3,6 @@ import { UniswapPriceOracle__factory, UniswapPriceOracle } from "../typechain";
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
-function tokens(n: string) {
-  return ethers.utils.parseUnits(n, "ether");
-}
-
 const uniswapPriceOracleAddr = "0xfbb8719819E3661Eb33E8B90Aa3C7bEd00349915";
 const txid = "0x72c14b6634763407a6b79ca34eb1b16003392c9792772c05901743672967a620";
 // const factory_addresss = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";

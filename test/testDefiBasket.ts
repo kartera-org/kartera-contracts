@@ -9,10 +9,6 @@ const { expect, assert } = chai;
 
 chai.use(solidity);
 
-function tokens(n: string) {
-  return ethers.utils.parseUnits(n, "ether");
-}
-
 describe("DefiBasket functions", function () {
     before(async function () {
         [this.alice, this.bob, this.carol, ...this.addrs] = await ethers.getSigners();
@@ -23,7 +19,7 @@ describe("DefiBasket functions", function () {
 
         this.KarteraToken = (await ethers.getContractFactory("KarteraToken")) as KarteraToken__factory;
         this.kartera = await this.KarteraToken.deploy();
-        this.kartera.mint(this.defiBasket.address, tokens('1000'));
+        this.kartera.mint(this.defiBasket.address, ethers.utils.parseEther('1000'));
 
         this.MockAave = (await ethers.getContractFactory("MockAave")) as MockAave__factory;
         this.mockAave = await this.MockAave.deploy();
@@ -38,21 +34,21 @@ describe("DefiBasket functions", function () {
       await this.defiBasket.connect(this.bob).addConstituent(this.mockAave.address, 20, 30, "0xF7904a295A029a3aBDFFB6F12755974a958C7C25");
 
       let defiKarteraBal = await this.kartera.balanceOf(this.defiBasket.address);
-      assert.equal(defiKarteraBal.toString(), tokens('1000'));
+      assert.equal(defiKarteraBal.toString(), ethers.utils.parseEther('1000'));
 
-      await this.defiBasket.setIncentiveToken(this.kartera.address, tokens('0.5'));
+      await this.defiBasket.setIncentiveToken(this.kartera.address, ethers.utils.parseEther('0.5'));
 
       let incentive = await this.defiBasket.incentive('10');
       console.log('incentive: ', incentive.toString() );
     
       await this.mockAave
         .connect(this.alice)
-        .approve(this.defiBasket.address, tokens("10"));
+        .approve(this.defiBasket.address, ethers.utils.parseEther("10"));
 
-      await this.defiBasket.connect(this.alice).makeDeposit(this.mockAave.address, tokens('10'));
+      await this.defiBasket.connect(this.alice).makeDeposit(this.mockAave.address, ethers.utils.parseEther('10'));
 
       let aliceKarteraBal = await this.kartera.balanceOf(this.alice.address);
-      expect(aliceKarteraBal.toString()).to.equal(tokens('5'));
+      expect(aliceKarteraBal.toString()).to.equal(ethers.utils.parseEther('5'));
 
 
     });

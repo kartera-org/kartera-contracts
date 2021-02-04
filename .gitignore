@@ -5,3 +5,5 @@ package-lock.json
 .env
 
 typechain/
+scripts/contractinfo.txt
+scripts/deployGanache.ts

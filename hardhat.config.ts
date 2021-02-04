@@ -19,6 +19,7 @@ const RINKEBY_PRIVATE_KEY =
   "0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3"; // well known private key
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 const KOVAN_PRIVATE_KEY = process.env.KOVAN_PRIVATE_KEY || "";
+const GANACHE_PRIVATE_KEY = process.env.GANACHE_PRIVATE_KEY || "";
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   solidity: {
@@ -35,8 +36,8 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {},
     localhost: {
-      // gas: "auto",
-      // blockGasLimit: 1000000,
+      // gas: 10000000,
+      // blockGasLimit: 10000000,
       // gasMultiplier: 10,
       // url: `HTTP://127.0.0.1:7545`,
       // accounts: [localhost_PRIVATE_KEY],
@@ -52,6 +53,10 @@ const config: HardhatUserConfig = {
     coverage: {
       url: "http://127.0.0.1:8555", // Coverage launches its own ganache-cli client
     },
+    ganache: {
+      url: "http://127.0.0.1:7545",
+      accounts: [GANACHE_PRIVATE_KEY]
+    }
   },
   etherscan: {
     // Your API key for Etherscan

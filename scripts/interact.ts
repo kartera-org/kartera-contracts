@@ -5,11 +5,6 @@ import { CryptoTopTen__factory, CryptoTopTen } from "../typechain";
 // import { MockToken2__factory, MockToken2 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
-
-function tokens(n: string) {
-    return ethers.utils.parseUnits(n, "ether");
-}
-
 const cryptoTopTenAddr =  "0xbF529E43AA262A070C518d209FF6C56d916C0b17";
 //transaction id:  0x748a82124ec8bbd5f856a7b0bdffbb386b865c717463e230546263fe8eb70a45;
 
@@ -122,9 +117,9 @@ async function main() {
   // //check balance of account 
   // let balance = await karteratoken.balanceOf(accounts[0]);
   // console.log('kartera balance of account[0]: ', balance.toString() );
-  // await karteratoken.connect(owner).approve(addr1.address, tokens('1000'));
+  // await karteratoken.connect(owner).approve(addr1.address, ethers.utils.parseEther('1000'));
   // // console.log('res1: ', res1 );
-  // await karteratoken.transfer( accounts[1], tokens('1000') );
+  // await karteratoken.transfer( accounts[1], ethers.utils.parseEther('1000') );
   // // console.log('res2: ', res2 );
 
   // balance = await karteratoken.balanceOf(accounts[1]);

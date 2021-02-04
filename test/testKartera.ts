@@ -19,10 +19,6 @@ import { ethers } from "hardhat";
 chai.use(solidity);
 const { expect } = chai;
 
-function tokens(n: string) {
-  return ethers.utils.parseUnits(n, "ether");
-}
-
 let provider = ethers.getDefaultProvider();
 
 describe("Kartera Token", function () {
@@ -118,12 +114,12 @@ describe("Kartera Token", function () {
 
     it("MockAave balance set at 1b tokens", async function () {
       const ownerBalance = await mockAave.balanceOf(owner.address);
-      expect(await mockAave.totalSupply()).to.equal(tokens("1000000000"));
+      expect(await mockAave.totalSupply()).to.equal(ethers.utils.parseEther("1000000000"));
     });
 
     it("owner balance set at 1b tokens", async function () {
       const ownerBalance = await mockAave.balanceOf(owner.address);
-      expect(ownerBalance).to.equal(tokens("1000000000"));
+      expect(ownerBalance).to.equal(ethers.utils.parseEther("1000000000"));
     });
 
     it("mockAave name check", async function () {
@@ -267,14 +263,14 @@ describe("Kartera Token", function () {
     it("Make deposit check", async function () {
       await mockAave
         .connect(owner)
-        .approve(defiBasket.address, tokens("10000"));
+        .approve(defiBasket.address, ethers.utils.parseEther("10000"));
 
       await defiBasket
         .connect(owner)
-        .makeDeposit(mockAave.address, tokens("10000"));
+        .makeDeposit(mockAave.address, ethers.utils.parseEther("10000"));
 
       let aavebalanceInBasket = await mockAave.balanceOf(defiBasket.address);
-      expect(aavebalanceInBasket).to.equal(tokens("10000"));
+      expect(aavebalanceInBasket).to.equal(ethers.utils.parseEther("10000"));
     });
 
     it(' Aave balance of basket check ', async function () {
@@ -282,12 +278,12 @@ describe("Kartera Token", function () {
 
       console.log('aavebalance of basket:10,000: ',  ethers.utils.formatUnits(aavebalance));
 
-      expect(aavebalance).to.equal(tokens('10000'));
+      expect(aavebalance).to.equal(ethers.utils.parseEther('10000'));
     });
 
     it(' Basket balance of investor check ', async function () {
        let defibalance = await defiBasket.balanceOf(owner.address);
-       expect(defibalance).to.equal(tokens('10'));
+       expect(defibalance).to.equal(ethers.utils.parseEther('10'));
     });
 
     it(' Total Deposit after deposit check ', async function () {
@@ -311,14 +307,14 @@ describe("Kartera Token", function () {
       let defibaskettokens = 1;
       await defiBasket
         .connect(owner)
-        .approve(defiBasket.address, tokens("1"));
+        .approve(defiBasket.address, ethers.utils.parseEther("1"));
 
       await defiBasket
         .connect(owner)
-        .withdrawComponent(mockAave.address, tokens("1"));
+        .withdrawComponent(mockAave.address, ethers.utils.parseEther("1"));
 
       let aavebalanceInBasket = await mockAave.balanceOf(defiBasket.address);
-      expect(aavebalanceInBasket).to.equal(tokens("9000"));
+      expect(aavebalanceInBasket).to.equal(ethers.utils.parseEther("9000"));
     });
 
   });

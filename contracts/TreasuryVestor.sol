@@ -8,7 +8,7 @@ pragma solidity  >=0.4.22 <0.8.0;
 // import "./SafeMath.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract TreasuryVester {
+contract TreasuryVestor {
     using SafeMath for uint;
 
     // address public uni;

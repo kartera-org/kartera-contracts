@@ -9,10 +9,6 @@ import { DefiBasket__factory, DefiBasket } from "../typechain";
 import chai from "chai";
 const { expect, assert } = chai;
 
-function tokens(n: string) {
-    return ethers.utils.parseUnits(n, "ether");
-  }
-
 function encodeParameters(types:any, values:any) {
     const abi = new ethers.utils.AbiCoder();
     return abi.encode(types, values);
@@ -52,48 +48,39 @@ describe('Governor', () => {
         await this.timelock.setPendingAdmin(this.gov.address);
         await this.gov.__acceptAdmin();
 
-        let defiOwner = await this.defiBasket.owner();
-        console.log('defiOwner: ', defiOwner );
-        console.log('timelock: ', this.timelock.address );
-
         await this.defiBasket.transferOwnership(this.timelock.address);
-
-        defiOwner = await this.defiBasket.owner();
-        console.log('defiOwner after transter to timelock: ', defiOwner );
+        //transfer ownership of kartera to timelock
+        await this.kartera.transferOwnership(this.timelock.address);
 
         await expectRevert(
             this.gov.connect(this.alice).propose(
-                [this.defiBasket.address], ['0'], ['updateFeeFactor(uint256)'],
-                [encodeParameters(['uint256'], ['2000'])],
-                'Increase basket fees',
+                [this.kartera.address], ['0'], ['mint(address,uint256)'],
+                [encodeParameters(['address', 'uint256'], [this.defiBasket.address, ethers.utils.parseEther('25000000')])],
+                'Mint 25m more kartera tokens to defiBasket',
             ),
             'GovernorAlpha::propose: proposer votes below proposal threshold',
         );
         
         let proposalid = await this.gov.connect(this.dev).propose(
-            [this.defiBasket.address], ['0'], ['updateFeeFactor(uint256)'],
-            [encodeParameters(['uint256'], ['2000'])],
-            'Increase basket fees',
+            [this.kartera.address], ['0'], ['mint(address,uint256)'],
+            [encodeParameters(['address','uint256'], [this.defiBasket.address, ethers.utils.parseEther('25000000')])],
+            'Mint 25m more kartera tokens to defiBasket',
         );
-        console.log('proposal id: ', proposalid.value.toString() );
+        console.log('proposal id: ', proposalid['value'].toString() );
 
         await time.advanceBlock();
         await this.gov.connect(this.dev).castVote('1', true);
-        // await expectRevert(this.gov.queue('1'), "GovernorAlpha::queue: proposal can only be queued if it is succeeded");
-        console.log("Advancing 10 blocks. Will take a while...");
-        // for (let i = 0; i < 10; ++i) {
-        //     await time.advanceBlock();
-        // }
-        // console.log("Advancing all 10 blocks. done...");
+        await expectRevert(this.gov.queue('1'), "GovernorAlpha::queue: proposal can only be queued if it is succeeded");
+        console.log("Advancing 17280 blocks. Will take a while... might have to increase mocha timeout");
+        for (let i = 0; i < 17280; ++i) {
+            await time.advanceBlock();
+        }
         await this.gov.queue('1');
         await expectRevert(this.gov.execute('1'), "Timelock::executeTransaction: Transaction hasn't surpassed time lock.");
         await time.increase(time.duration.days(3));
-        await this.gov.execute('1');
-        assert.equal((await this.defiBasket.getFeeFactor()).toString(), '2000');
-        
-        await this.defiBasket.transferOwnership(this.alice.address);
 
-        defiOwner = await this.defiBasket.owner();
-        console.log('defiOwner at end: ', defiOwner );
+        await this.gov.execute('1');
+        assert.equal((await this.kartera.balanceOf(this.defiBasket.address)).toString(), ethers.utils.parseEther('25000000'));
+        
     });
 });

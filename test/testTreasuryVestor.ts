@@ -1,14 +1,10 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { ethers } from "hardhat";
 import { KarteraToken__factory, KarteraToken } from "../typechain";
-import { TreasuryVester__factory, TreasuryVester } from "../typechain";
+import { TreasuryVestor__factory, TreasuryVestor } from "../typechain";
 import chai from "chai";
 const { expect, assert } = chai;
 const { expectRevert, time } = require( "@openzeppelin/test-helpers");
-
-function tokens(n: string) {
-    return ethers.utils.parseUnits(n, "ether");
-  }
 
 describe ( 'Treasury Vestor' , () => {
 
@@ -20,24 +16,24 @@ describe ( 'Treasury Vestor' , () => {
 
     beforeEach( async function () {
         this.kartera = await this.KarteraToken.deploy();
-        await this.kartera.connect(this.alice).mint(this.alice.address, tokens('300000000'));
+        await this.kartera.connect(this.alice).mint(this.alice.address, ethers.utils.parseEther('300000000'));
 
         let startV = await time.latest();
         //add ten seconds
         startV = parseInt(startV) + 10;
         let cliffV = startV + 10;
         let endV = startV + 20;
-        this.treasuryVester = await this.TreasuryVester.deploy(this.kartera.address, this.bob.address, tokens('300000000'), startV.toString(), cliffV.toString(), endV.toString()  );
+        this.treasuryVester = await this.TreasuryVester.deploy(this.kartera.address, this.bob.address, ethers.utils.parseEther('300000000'), startV.toString(), cliffV.toString(), endV.toString()  );
         // // fund teasury vestor with 300000000 tokens
-        await this.kartera.connect(this.alice).transfer(this.treasuryVester.address, tokens('300000000'));
+        await this.kartera.connect(this.alice).transfer(this.treasuryVester.address, ethers.utils.parseEther('300000000'));
     })
 
     it('Treasury Vesting has correct vesting', async function () {
         let balAlice = await this.kartera.balanceOf(this.alice.address);
-        assert.equal(balAlice.toString(), tokens('0') );
+        assert.equal(balAlice.toString(), ethers.utils.parseEther('0') );
 
         let treasurybal = await this.kartera.balanceOf(this.treasuryVester.address);
-        assert.equal(treasurybal.toString(), tokens('300000000'));
+        assert.equal(treasurybal.toString(), ethers.utils.parseEther('300000000'));
 
         await expect( this.treasuryVester.setRecipient(this.carol.address)).to.be.revertedWith("TreasuryVester::setRecipient: unauthorized");
 

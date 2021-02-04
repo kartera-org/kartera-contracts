@@ -4,10 +4,6 @@ import { CryptoTopTen__factory, CryptoTopTen } from "../typechain";
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
-function tokens(n: string) {
-  return ethers.utils.parseUnits(n, "ether");
-}
-
 // const clPriceFeedContract = "0x52480065b0AB39117F737E61AeD44D5E1B0005DE";
 // const txid = "0x3ca398665516d402c0d7f07d8a050f7de42152324434038516cb06ce4771fc57";
 const cryptoTopTenAddr = "0xAc170083E2DFA595A4fB3FAb1295feF1383f03a6";

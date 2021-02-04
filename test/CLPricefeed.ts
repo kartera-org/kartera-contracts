@@ -7,10 +7,6 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 chai.use(solidity);
 const { expect } = chai;
 
-function tokens(n: string) {
-  return ethers.utils.parseUnits(n, "ether");
-}
-
 let provider = ethers.getDefaultProvider();
 
 describe("CLPriceFeed Token", function () {

@@ -15,8 +15,6 @@ contract KarteraToken is Ownable, ERC20Capped {
         ERC20Capped(1000000000 * (10 ** 18))
         public
     {
-        // _mint(msg.sender, totalSupply());
-        // _mint(address(this), cap());
     }
 
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner.

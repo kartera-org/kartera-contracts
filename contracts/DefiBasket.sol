@@ -21,7 +21,6 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     mapping (uint8 => address) internal constituentAddress;
     address internal currencyAddress = 	0x9326BFA02ADD2366b30bacB125260Af641031331;
     uint256 internal currencyDecimal = 100000000;
-    uint256 internal feeFactor = 1000; //0.1%
     uint8 internal totalWeight = 0;
     uint256 internal depositThreshold =  100000000000000;
     struct Constituent{
@@ -49,7 +48,7 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         _;
     }
 
-    function transferManager(address newmanager) external onlyManager {
+    function transferManager(address newmanager) external onlyManagerOrOwner {
         manager = newmanager;
     }
 
@@ -75,6 +74,10 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         constituentAddress[numberOfConstituents] = conaddr;
         totalWeight += weight;
         numberOfConstituents++;
+    }
+
+    function mint(address _to, uint256 _amount) external onlyOwner{
+        _mint(_to, _amount);
     }
 
     function removeConstituent(address conaddr) public onlyManagerOrOwner {
@@ -124,17 +127,8 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         constituents[conaddr].totalDeposit -= amount;
     }
     
-    function updateDepositThreshold(uint256 depositthreshold) external onlyManager {
+    function updateDepositThreshold(uint256 depositthreshold) external onlyManagerOrOwner {
         depositThreshold = depositthreshold;
-    }
-
-    function updateFeeFactor(uint256 feefactor) external onlyOwner {
-        feeFactor = feefactor;
-    }
-
-    function collectFees() external onlyOwner {
-        uint256 feeAllocation = SafeMath.div(totalSupply(), feeFactor);
-        _mint(owner(), feeAllocation);
     }
 
     function getConstituentAddress(uint8 indx) public view returns (address) {
@@ -168,6 +162,7 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     }
 
     function constituentPrice(address addr) public view returns (uint256) {
+        return 100000000;
         int curprice = currencyPrice();
         AggregatorV3Interface priceFeed = AggregatorV3Interface(constituents[addr].clPriceAddress);
         (
@@ -183,6 +178,7 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     }
 
     function currencyPrice() public view returns (int) {
+        return 100000000;
         AggregatorV3Interface priceFeed = AggregatorV3Interface(currencyAddress);
         (
             uint80 roundID, 
@@ -233,7 +229,7 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         require(constituents[conaddr].constituentAddress == conaddr, 'Constituent does not exist');
         uint currentweight = 0;
         uint256 totaldeposit = totalDeposit();
-        if (totaldeposit>0 && totaldeposit > depositThreshold){
+        if (totaldeposit > depositThreshold){
             currentweight = SafeMath.mul(100, constituents[conaddr].totalDeposit).mul(constituentPrice(conaddr)).div(totaldeposit);
         }else{
             return true;
@@ -242,10 +238,6 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
             return true;
         }
         return false;
-    }
-
-    function getFeeFactor() public view returns (uint256) {
-        return feeFactor;
     }
 
     function getManager() public view returns (address) {
@@ -261,6 +253,8 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         uint256 d = SafeMath.mul(incentiveMultiplier, dollaramount);
         if(karterasupply >= d){
             return d;
+        }else{
+            return karterasupply;
         }
         return 0;
     }
