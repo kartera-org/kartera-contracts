@@ -1,68 +1,72 @@
 import { ethers } from "hardhat";
+import { ABI } from './abi'
+
+let karteraToken:any;
+let defiBasket:any;
+let karteraaddress = "0x1d10450D4cfA9241EaB34Ee7E6b77956E29E6794";
+let defiBasketaddress = "0x06cfFb6EDEB4B2E0D15B1b37d007df4ccB88D6a6";
 
 async function main() {
-  // const factory = await ethers.getContractFactory("Counter");
+  //get signer account
+  const [karteraOwner, addr] = await ethers.getSigners();
+  await loadContracts();
+
+  await sendTokens("0x32Bd516d7C5cdD918477632558C01aF2663f3F69", karteraOwner, "0x97A3F3e841c7D3530C930Af20887825fa25dB7dF", '100000');
+}
+
+async function sendTokens(tokenaddr:string, signer:any, to:string, amount:string){
+
+  var contract = await ethers.getContractFactory("MockAave");
+  var token = await contract.attach(tokenaddr);
+
+  await token.connect(signer).approve(to, ethers.utils.parseEther(amount));
+  let tx = await token.transfer(to, ethers.utils.parseEther(amount));
+
+  console.log('tx: ', tx );
+}
+
+async function loadContracts() {
+  
   const KarteraToken = await ethers.getContractFactory("KarteraToken");
+  karteraToken = await KarteraToken.attach(karteraaddress);
 
-  // If we had constructor arguments, they would be passed into deploy()
-  //   let dappToken = await factory.deploy(1000000);
+  const DefiBasket = await ethers.getContractFactory("DefiBasket");
+  defiBasket = await DefiBasket.attach(defiBasketaddress);
+}
+
+async function deployContracts(){
+
+  //deploy kartera token
+  const KarteraToken = await ethers.getContractFactory("KarteraToken");
   let karteraToken = await KarteraToken.deploy();
-
-  // The address the Contract WILL have once mined
   console.log('karteraToken contract id: ', karteraToken.address);
-
-  // The transaction that was sent to the network to deploy the Contract
   console.log('transaction id: ', karteraToken.deployTransaction.hash);
-
-  // The contract is NOT deployed yet; we must wait until it is mined
   await karteraToken.deployed();
 
-  const CryptoTopTen = await ethers.getContractFactory("CryptoTopTen");
+  //deploy defiBasket Contract
+  const DefiBasket = await ethers.getContractFactory("DefiBasket");
+  let defiBasket = await DefiBasket.deploy();
+  console.log('defiBasket contract id: ', defiBasket.address);
+  console.log('transaction id: ', defiBasket.deployTransaction.hash);
+  await defiBasket.deployed();
+}
 
-  // If we had constructor arguments, they would be passed into deploy()
-  //   let dappToken = await factory.deploy(1000000);
-  let cryptoTopTen = await CryptoTopTen.deploy();
+async function mintKartera(address:string, amount:string){
 
-  // The address the Contract WILL have once mined
-  console.log('cryptoTopTen contract id: ', cryptoTopTen.address);
+  let kartOwnerTokens = 3e7;
+  let defiBasketTokens = 3e7;
 
-  // The transaction that was sent to the network to deploy the Contract
-  console.log('transaction id: ', cryptoTopTen.deployTransaction.hash);
+  await karteraToken.mint(address, ethers.utils.parseEther(amount));
+}
 
-  // The contract is NOT deployed yet; we must wait until it is mined
-  await cryptoTopTen.deployed();
+async function setIncentivesForDefiBasket(karteraaddress:string, multiplier:string){
+  // set incentive token parameters
+  await defiBasket.setIncentiveToken(karteraToken.address, ethers.utils.parseEther('100'));
+}
 
-  const MockToken1 = await ethers.getContractFactory("MockToken1");
-
-  // If we had constructor arguments, they would be passed into deploy()
-  //   let dappToken = await factory.deploy(1000000);
-  let mockToken1 = await MockToken1.deploy();
-
-  // The address the Contract WILL have once mined
-  console.log('mockToken1 contract id: ', mockToken1.address);
-
-  // The transaction that was sent to the network to deploy the Contract
-  console.log('transaction id: ', mockToken1.deployTransaction.hash);
-
-  // The contract is NOT deployed yet; we must wait until it is mined
-  await mockToken1.deployed();
-
-  const MockToken2 = await ethers.getContractFactory("MockToken2");
-
-  // If we had constructor arguments, they would be passed into deploy()
-  //   let dappToken = await factory.deploy(1000000);
-  let mockToken2 = await MockToken2.deploy();
-
-  // The address the Contract WILL have once mined
-  console.log('mockToken2 contract id: ', mockToken2.address);
-
-  // The transaction that was sent to the network to deploy the Contract
-  console.log('transaction id: ', mockToken2.deployTransaction.hash);
-
-  // The contract is NOT deployed yet; we must wait until it is mined
-  await mockToken2.deployed();
-
-
+async function addBasketConstituent(conAddr:string, weight:number, weightTol:number, claddr:string){
+  
+  await defiBasket.addConstituent(conAddr,weight, weightTol, claddr);
 }
 
 main()
@@ -71,3 +75,12 @@ main()
     console.error(error);
     process.exit(1);
   });
+
+
+  // const constituents = [
+  //   {name:'MockAave', addr:'0xefF313696D5513Ab2d7763a967a64d26B0fBB793', weight:25, weightTol:100, claddr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
+  //   {name:'MockMkr', addr:'0x93a1d61641750DcA1826DeD628c82188C928307E', weight:10, weightTol:100, claddr:"0x0B156192e04bAD92B6C1C13cf8739d14D78D5701"},
+  //   {name:'MockSnx', addr:'0xbB4B258B362C7d9d07903E8934b45550a4A7F92C', weight:20, weightTol:100, claddr:"0xF9A76ae7a1075Fe7d646b06fF05Bd48b9FA5582e"},
+  //   {name:'MockUni', addr:'0x32Bd516d7C5cdD918477632558C01aF2663f3F69', weight:30, weightTol:100, claddr:"0x17756515f112429471F86f98D5052aCB6C47f6ee"},
+  //   {name:'MockYfi', addr:'0xd9D54E7016306A3009629833C2409Fd04F25A118', weight:15, weightTol:100, claddr:"0xC5d1B1DEb2992738C0273408ac43e1e906086B6C"},
+  // ];

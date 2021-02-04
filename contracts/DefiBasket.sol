@@ -57,8 +57,8 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         incentiveMultiplier = multiplier;
     }
 
-    function setIncentiveMultiplier(address incentivetoken) external onlyManagerOrOwner {
-        incentiveToken = incentivetoken;
+    function setIncentiveMultiplier(uint256 multiplier) external onlyManagerOrOwner {
+        incentiveMultiplier = multiplier;
     }
 
     function addConstituent(address conaddr, uint8 weight, uint8 weighttol, address clPriceAddress) external onlyManagerOrOwner {
@@ -162,7 +162,6 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     }
 
     function constituentPrice(address addr) public view returns (uint256) {
-        return 100000000;
         int curprice = currencyPrice();
         AggregatorV3Interface priceFeed = AggregatorV3Interface(constituents[addr].clPriceAddress);
         (
@@ -178,7 +177,6 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     }
 
     function currencyPrice() public view returns (int) {
-        return 100000000;
         AggregatorV3Interface priceFeed = AggregatorV3Interface(currencyAddress);
         (
             uint80 roundID, 
