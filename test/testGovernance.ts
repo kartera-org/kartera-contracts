@@ -19,7 +19,7 @@ describe('Governor', () => {
     before(async function () {
         // Get the ContractFactory and Signers here.
     
-        [this.alice, this.minter, this.dev, ...this.others] = await ethers.getSigners();
+        [this.alice, this.bob, this.carol, ...this.others] = await ethers.getSigners();
         this.Kartera = await ethers.getContractFactory("KarteraToken");
         this.DefiBasket = await ethers.getContractFactory("DefiBasket");
         this.Timelock = await ethers.getContractFactory("Timelock");    
@@ -32,15 +32,15 @@ describe('Governor', () => {
 
         this.kartera = await this.Kartera.deploy();
 
-        await this.kartera.connect(this.dev).delegate(this.dev.address);
-        // Mint 100 tokens for minter.
-        await this.kartera.mint(this.minter.address, '100');
-        // Mint 10 tokens for dev.
-        await this.kartera.mint(this.dev.address, '10');
+        await this.kartera.connect(this.carol).delegate(this.carol.address);
+        // Mint 100 tokens for bob.
+        await this.kartera.mint(this.bob.address, '100');
+        // Mint 10 tokens for carol.
+        await this.kartera.mint(this.carol.address, '10');
 
         assert.equal((await this.kartera.totalSupply()).toString(), '110');
-        assert.equal((await this.kartera.balanceOf(this.minter.address)).toString(), '100');
-        assert.equal((await this.kartera.balanceOf(this.dev.address)).toString(), '10');
+        assert.equal((await this.kartera.balanceOf(this.bob.address)).toString(), '100');
+        assert.equal((await this.kartera.balanceOf(this.carol.address)).toString(), '10');
 
         // Transfer ownership to timelock contract
         this.timelock = await this.Timelock.deploy(this.alice.address, time.duration.days(2).toString());
@@ -61,7 +61,7 @@ describe('Governor', () => {
             'GovernorAlpha::propose: proposer votes below proposal threshold',
         );
         
-        let proposalid = await this.gov.connect(this.dev).propose(
+        let proposalid = await this.gov.connect(this.carol).propose(
             [this.kartera.address], ['0'], ['mint(address,uint256)'],
             [encodeParameters(['address','uint256'], [this.defiBasket.address, ethers.utils.parseEther('25000000')])],
             'Mint 25m more kartera tokens to defiBasket',
@@ -69,7 +69,7 @@ describe('Governor', () => {
         console.log('proposal id: ', proposalid['value'].toString() );
 
         await time.advanceBlock();
-        await this.gov.connect(this.dev).castVote('1', true);
+        await this.gov.connect(this.carol).castVote('1', true);
         await expectRevert(this.gov.queue('1'), "GovernorAlpha::queue: proposal can only be queued if it is succeeded");
         console.log("Advancing 17280 blocks. Will take a while... might have to increase mocha timeout");
         for (let i = 0; i < 17280; ++i) {

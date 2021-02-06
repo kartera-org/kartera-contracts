@@ -66,7 +66,32 @@ async function setIncentivesForDefiBasket(karteraaddress:string, multiplier:stri
 
 async function addBasketConstituent(conAddr:string, weight:number, weightTol:number, claddr:string){
   
-  await defiBasket.addConstituent(conAddr,weight, weightTol, claddr);
+  await defiBasket.addConstituent(conAddr, weight, weightTol, claddr);
+}
+
+const contractList = [
+  'MockAave',
+  'MockComp',
+  'MockMkr',
+  'MockSnx',
+  'MockSushi',
+  'MockUma',
+  'MockUni',
+  'MockYfi',
+];
+async function deployMockContracts() {
+
+  for(let i=0; i<contractList.length; i++){
+    let Token = await ethers.getContractFactory(contractList[i]);
+
+    let token = await Token.deploy();
+
+    console.log('karteraToken contract id: ', token.address);
+
+    console.log('transaction id: ', token.deployTransaction.hash);
+
+    await token.deployed();
+  }
 }
 
 main()
@@ -84,3 +109,14 @@ main()
   //   {name:'MockUni', addr:'0x32Bd516d7C5cdD918477632558C01aF2663f3F69', weight:30, weightTol:100, claddr:"0x17756515f112429471F86f98D5052aCB6C47f6ee"},
   //   {name:'MockYfi', addr:'0xd9D54E7016306A3009629833C2409Fd04F25A118', weight:15, weightTol:100, claddr:"0xC5d1B1DEb2992738C0273408ac43e1e906086B6C"},
   // ];
+
+  // const kovanContracts = [
+//     {name:'MockAave', addr:'0xefF313696D5513Ab2d7763a967a64d26B0fBB793'},
+//     {name:'MockComp', addr:'0x1D8F91800fB64A5cB61bF017787dD1B72be8C70F'},
+//     {name:'MockMkr', addr:'0x93a1d61641750DcA1826DeD628c82188C928307E'},
+//     {name:'MockSnx', addr:'0xbB4B258B362C7d9d07903E8934b45550a4A7F92C'},
+//     {name:'MockSushi', addr:'0x40717C1049Be241C9fD431Cd1EDE91c2AbFdA218'},
+//     {name:'MockUma', addr:'0x07e58CC9fec4AA73B6B39978A1df2EFB94EbDB2a'},
+//     {name:'MockUni', addr:'0x32Bd516d7C5cdD918477632558C01aF2663f3F69'},
+//     {name:'MockYfi', addr:'0xd9D54E7016306A3009629833C2409Fd04F25A118'},
+// ]
