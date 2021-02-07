@@ -232,7 +232,7 @@ describe("Kartera Token", function () {
 
     it(" Should fail to get Exchange Rate constituent does not exist ", async function(){
       let addr = "0xF7904a295A029a3aBDFFB6F12755974a958C7C25";
-      await expect( defiBasket.exchangneRate( addr )).to.be.revertedWith('Constituent does not exist');
+      await expect( defiBasket.exchangeRate( addr )).to.be.revertedWith('Constituent does not exist');
     });
 
     it(" Should fail to get acceptingDeposit because constituent does not exist ", async function(){

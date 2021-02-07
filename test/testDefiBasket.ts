@@ -1,7 +1,7 @@
 import { solidity } from "ethereum-waffle";
-import { DefiBasket__factory, DefiBasket } from "../typechain";
-import { KarteraToken__factory, KarteraToken } from "../typechain";
-import { MockAave__factory, MockAave } from "../typechain";
+import { DefiBasket__factory, DefiBasket, MockAave } from "../typechain";
+// import { KarteraToken__factory, KarteraToken } from "../typechain";
+// import { MockAave__factory, MockAave } from "../typechain";
 
 import { ethers } from "hardhat";
 import chai from "chai";
@@ -14,15 +14,17 @@ describe("DefiBasket functions", function () {
         [this.alice, this.bob, this.carol, ...this.addrs] = await ethers.getSigners();
 
         // Get the ContractFactory and Signers here.
-        this.DefiBasket = (await ethers.getContractFactory("DefiBasket")) as DefiBasket__factory;
+        this.DefiBasket = (await ethers.getContractFactory("DefiBasket"));
         this.defiBasket = await this.DefiBasket.deploy();
 
-        this.KarteraToken = (await ethers.getContractFactory("KarteraToken")) as KarteraToken__factory;
+        this.KarteraToken = (await ethers.getContractFactory("KarteraToken"));
         this.kartera = await this.KarteraToken.deploy();
-        this.kartera.mint(this.defiBasket.address, ethers.utils.parseEther('1000'));
+        this.kartera.mint(this.defiBasket.address, ethers.utils.parseEther('1000000000'));
 
-        this.MockAave = (await ethers.getContractFactory("MockAave")) as MockAave__factory;
+        this.MockAave = (await ethers.getContractFactory("MockAave"));
         this.mockAave = await this.MockAave.deploy();
+        this.MockMkr = (await ethers.getContractFactory("MockMkr"));
+        this.mockMkr = await this.MockMkr.deploy();
     });
 
     it("DefiBasket name check", async function () {
@@ -32,9 +34,10 @@ describe("DefiBasket functions", function () {
       await this.defiBasket.transferManager(this.bob.address)
 
       await this.defiBasket.connect(this.bob).addConstituent(this.mockAave.address, 20, 30, "0xF7904a295A029a3aBDFFB6F12755974a958C7C25");
+      await this.defiBasket.connect(this.bob).addConstituent(this.mockMkr.address, 20, 30, "0xF7904a295A029a3aBDFFB6F12755974a958C7C25");
 
       let defiKarteraBal = await this.kartera.balanceOf(this.defiBasket.address);
-      assert.equal(defiKarteraBal.toString(), ethers.utils.parseEther('1000'));
+      assert.equal(defiKarteraBal.toString(), ethers.utils.parseEther('1000000000'));
 
       await this.defiBasket.setIncentiveToken(this.kartera.address, ethers.utils.parseEther('0.5'));
 
@@ -43,13 +46,41 @@ describe("DefiBasket functions", function () {
     
       await this.mockAave
         .connect(this.alice)
-        .approve(this.defiBasket.address, ethers.utils.parseEther("10"));
+        .approve(this.defiBasket.address, ethers.utils.parseEther("1000000"));
 
-      await this.defiBasket.connect(this.alice).makeDeposit(this.mockAave.address, ethers.utils.parseEther('10'));
+      await this.defiBasket.connect(this.alice).makeDeposit(this.mockAave.address, ethers.utils.parseEther('1000000'));
+
+      await this.mockMkr
+        .connect(this.alice)
+        .approve(this.defiBasket.address, ethers.utils.parseEther("1000000"));
+
+      await this.defiBasket.connect(this.alice).makeDeposit(this.mockMkr.address, ethers.utils.parseEther('1000000'));
 
       let aliceKarteraBal = await this.kartera.balanceOf(this.alice.address);
-      expect(aliceKarteraBal.toString()).to.equal(ethers.utils.parseEther('5'));
+      console.log('alice kartera bal: ', aliceKarteraBal.toString() );
+      expect(aliceKarteraBal.toString()).to.equal(ethers.utils.parseEther('1000000'));
 
 
     });
+
+    it('change constituent weights', async function () {
+      
+      // change mockaave weight tol to 0
+      // await this.defiBasket.updateConstituent(this.mockAave.address, 20, 0);
+      expect(await this.defiBasket.acceptingDeposit(this.mockAave.address)).to.equal(false);
+      // await this.defiBasket.updateConstituent(this.mockAave.address, 20, 20);
+      // expect(await this.defiBasket.acceptingDeposit(this.mockAave.address)).to.equal(false);
+      // await this.defiBasket.updateConstituent(this.mockAave.address, 20, 30);
+      // expect(await this.defiBasket.acceptingDeposit(this.mockAave.address)).to.equal(false);
+      await this.defiBasket.updateConstituent(this.mockAave.address, 20, 31);
+      expect(await this.defiBasket.acceptingDeposit(this.mockAave.address)).to.equal(false);
+      // await this.defiBasket.updateConstituent(this.mockAave.address, 20, 35);
+      // expect(await this.defiBasket.acceptingDeposit(this.mockAave.address)).to.equal(false);
+
+      let totaldeposit = await this.defiBasket.totalDeposit();
+      console.log('totaldeposit: ', totaldeposit.toString() );
+
+
+    })
+
 });

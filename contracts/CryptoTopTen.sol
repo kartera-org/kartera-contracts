@@ -156,7 +156,7 @@ contract CryptoTopTen is ERC20("Defi Token", "OKU"), Ownable {
         return _initialContractValue * currencyDecimal;
     }
 
-    function exchangneRate(address conaddr) public view returns (uint256) {
+    function exchangeRate(address conaddr) public view returns (uint256) {
         if(constituents[conaddr].contractAddress != conaddr || !constituents[conaddr].active){
             return 0;
         }
