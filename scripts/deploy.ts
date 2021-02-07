@@ -1,5 +1,4 @@
 import { ethers } from "hardhat";
-import { ABI } from './abi'
 
 let karteraToken:any;
 let defiBasket:any;
