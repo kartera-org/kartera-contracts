@@ -218,7 +218,6 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
 
     /// @notice get constituent price from chainlink onchain feed
     function constituentPrice(address addr) public view returns (uint256) {
-        return 100000000;
         int curprice = currencyPrice();
         AggregatorV3Interface priceFeed = AggregatorV3Interface(constituents[addr].clPriceAddress);
         (
@@ -235,7 +234,6 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
 
     /// @notice get base currency price from chain link feed (ETH)
     function currencyPrice() public view returns (int) {
-        return 100000000;
         AggregatorV3Interface priceFeed = AggregatorV3Interface(currencyAddress);
         (
             uint80 roundID, 
