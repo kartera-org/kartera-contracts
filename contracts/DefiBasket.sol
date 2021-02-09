@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "hardhat/console.sol";
 import "./KarteraToken.sol";
+import "./KarteraPriceOracle.sol";
 
 /// @title DefiBasket 
 contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burnable {
@@ -18,7 +19,7 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     address internal manager;
 
     // price at which first token is issued
-    uint internal initialBasketValue = 1000;
+    uint internal initialBasketValue = 100;
 
     // total number of constituents in the basket 
     uint8 internal numberOfConstituents = 0;
@@ -29,22 +30,19 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     // map of constituent address by index
     mapping (uint8 => address) internal constituentAddress;
 
-    // base currency used to get constituent on chain price (from chain link)
-    address internal currencyAddress = 	0x9326BFA02ADD2366b30bacB125260Af641031331;
-
-    // chain link price multiplier
-    uint256 internal currencyDecimal = 100000000;
+    // price oracle contract
+    KarteraPriceOracle karteraPriceOracle;
 
     // total weight 
     uint8 internal totalWeight = 0;
 
     // parameter overrides weight of each constituent until $1m
-    uint256 internal depositThreshold =  100000000000000;
+    uint256 internal depositThreshold =  1000000000000000000000000;
 
     // address of token offered as incentive kart token address
     address internal incentiveToken;
 
-    // $1 to # of tokens offered
+    // $1 to # of kartera tokens offered
     uint256 internal incentiveMultiplier;
 
     /** 
@@ -59,7 +57,6 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
 
     struct Constituent{
         address constituentAddress;
-        address clPriceAddress;
         uint8 weight;
         uint8 weightTolerance;
         uint8 id;
@@ -100,14 +97,18 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         incentiveMultiplier = multiplier;
     }
 
+    /// @notice price oracle address
+    function setPriceOracleAddress(address priceoracleAddr) external onlyManagerOrOwner {
+        karteraPriceOracle = KarteraPriceOracle(priceoracleAddr);
+    }
+
     /// @notice add constituent to a basket
-    function addConstituent(address conaddr, uint8 weight, uint8 weighttol, address clPriceAddress) external onlyManagerOrOwner {
+    function addConstituent(address conaddr, uint8 weight, uint8 weighttol) external onlyManagerOrOwner {
         require(constituents[conaddr].constituentAddress != conaddr || !constituents[conaddr].active, "Constituent already exists and is active");
-        require( totalWeight - constituents[conaddr].weight + weight <= 100, 'Total Weight Exceeds 100%');
+        require( totalWeight + weight <= 100, 'Total Weight Exceeds 100%');
         constituents[conaddr].constituentAddress = conaddr;
         constituents[conaddr].weight = weight;
         constituents[conaddr].weightTolerance = weighttol;
-        constituents[conaddr].clPriceAddress = clPriceAddress;
         constituents[conaddr].totalDeposit = 0;
         constituents[conaddr].active = true;
         constituents[conaddr].id = numberOfConstituents;
@@ -144,25 +145,26 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     }
 
     /// @notice external call to depoit tokens to basket and receive equivalent basket tokens
-    function makeDeposit(address conaddr, uint256 numberoftokens) external payable returns (uint256){
+    function makeDeposit(address conaddr, uint256 numberoftokens) external payable returns (uint256, uint256){
         require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
         require( constituents[conaddr].active, "Constituent is not active");
         bool acceptingDeposits = acceptingDeposit(conaddr);
         require(acceptingDeposits, "No further deposits accepeted for this contract");
-        uint256 amount = numberoftokens * constituentPrice(conaddr);
+        (uint256 prc, uint8 decs) = constituentPrice(conaddr);
+        uint256 amount = SafeMath.mul(numberoftokens, prc).div(power(10, decs));
         uint256 minttokens = tokensForDeposit(amount);
         ERC20 token = ERC20(conaddr);
         token.transferFrom(msg.sender, address(this), numberoftokens);
         _mint(msg.sender, minttokens);
         constituents[conaddr].totalDeposit += numberoftokens;
 
-        uint256 incentivesOffered = incentive(SafeMath.div(amount, currencyDecimal).div(power(10, decimals())));
+        uint256 incentivesOffered = incentive(SafeMath.div(amount, power(10, decimals())));
         if(incentivesOffered>0){
             ERC20 incentivetkn = ERC20(incentiveToken);
             incentivetkn.transfer(msg.sender, incentivesOffered);
         }
 
-        return numberoftokens;
+        return (minttokens, incentivesOffered);
     }
 
     /// @notice exchange basket tokens for removed constituent tokens
@@ -188,10 +190,9 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     }
 
     /// @notice get details of the constituent
-    function getConstituentDetails(address conaddr) public view returns (address, address, uint8, uint8, bool, uint256, uint8) {
+    function getConstituentDetails(address conaddr) public view returns (address, uint8, uint8, bool, uint256, uint8) {
         require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
         return (constituents[conaddr].constituentAddress,
-                constituents[conaddr].clPriceAddress,
                 constituents[conaddr].weight,
                 constituents[conaddr].weightTolerance,
                 constituents[conaddr].active,
@@ -216,44 +217,52 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         return activecons;
     }
 
-    /// @notice get constituent price from chainlink onchain feed
-    function constituentPrice(address addr) public view returns (uint256) {
-        int curprice = currencyPrice();
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(constituents[addr].clPriceAddress);
-        (
-            uint80 roundID, 
-            int price,
-            uint startedAt,
-            uint timeStamp,
-            uint80 answeredInRound
-        ) = priceFeed.latestRoundData();
-        require(timeStamp > 0, "Round not complete");
-        uint256 conprice = SafeMath.mul(uint256(curprice), uint256(price)).div(power(10, priceFeed.decimals()));
-        return conprice;
+    function constituentPrice(address conaddr) public view returns (uint256, uint8) {
+        (uint256 prc, uint8 decimals) = karteraPriceOracle.price(conaddr);
+        return (prc, decimals);
     }
 
-    /// @notice get base currency price from chain link feed (ETH)
-    function currencyPrice() public view returns (int) {
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(currencyAddress);
-        (
-            uint80 roundID, 
-            int price,
-            uint startedAt,
-            uint timeStamp,
-            uint80 answeredInRound
-        ) = priceFeed.latestRoundData();
-        console.log(priceFeed.decimals());
-        console.log(roundID );
-        require(timeStamp > 0, "Round not complete");
-        return price;
-    }
+    // /// @notice get constituent price from chainlink onchain feed
+    // function constituentPrice(address addr) public view returns (uint256) {
+    //     return 100000000;
+    //     int curprice = currencyPrice();
+    //     AggregatorV3Interface priceFeed = AggregatorV3Interface(constituents[addr].clPriceAddress);
+    //     (
+    //         uint80 roundID, 
+    //         int price,
+    //         uint startedAt,
+    //         uint timeStamp,
+    //         uint80 answeredInRound
+    //     ) = priceFeed.latestRoundData();
+    //     require(timeStamp > 0, "Round not complete");
+    //     uint256 conprice = SafeMath.mul(uint256(curprice), uint256(price)).div(power(10, priceFeed.decimals()));
+    //     return conprice;
+    // }
+
+    // /// @notice get base currency price from chain link feed (ETH)
+    // function currencyPrice() public view returns (int) {
+    //     return 100000000;
+    //     AggregatorV3Interface priceFeed = AggregatorV3Interface(currencyAddress);
+    //     (
+    //         uint80 roundID, 
+    //         int price,
+    //         uint startedAt,
+    //         uint timeStamp,
+    //         uint80 answeredInRound
+    //     ) = priceFeed.latestRoundData();
+    //     console.log(priceFeed.decimals());
+    //     console.log(roundID );
+    //     require(timeStamp > 0, "Round not complete");
+    //     return price;
+    // }
 
     /// @notice get total deposit in $
     function totalDeposit() public view returns(uint256) {
         uint256 totaldeposit = 0;
         for(uint8 i = 0; i < numberOfConstituents; i++) {
             address addr = constituentAddress[i];
-            totaldeposit += SafeMath.mul(constituentPrice(addr), constituents[addr].totalDeposit).div(power(10, constituents[addr].decimals));
+            (uint prc, uint8 decs) = constituentPrice(addr);
+            totaldeposit += SafeMath.mul(prc, constituents[addr].totalDeposit).div(power(10, decs));
         }
         return totaldeposit;
     }
@@ -264,25 +273,27 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         if (totaldeposit > 0) {
             return SafeMath.mul(totaldeposit, power(10, decimals())).div(totalSupply());
         }
-        return SafeMath.mul(initialBasketValue, currencyDecimal);
+        return SafeMath.mul(initialBasketValue, power(10, decimals()));
     }
 
     /// @notice gets exchangerate for a constituent token 1token = ? basket tokens
     function exchangeRate(address conaddr) public view returns (uint256) {
         require(constituents[conaddr].constituentAddress == conaddr, 'Constituent does not exist');
-        uint256 amount = SafeMath.mul(constituentPrice(conaddr), power(10, decimals()));
+        (uint prc, uint8 decs) = constituentPrice(conaddr);
+        uint256 amount = SafeMath.mul(prc, power(10, decimals())).div(power(10, decs));
         uint256 tokens = tokensForDeposit(amount);
         return tokens;
     }
 
     /// @notice # of basket tokens for deposit $ amount 
     function tokensForDeposit(uint amount) public view returns (uint256) {
-        return SafeMath.div(amount, tokenPrice());
+        return SafeMath.mul(amount, power(10, decimals())).div(tokenPrice());
     }
 
     /// @notice number of inactive constituent tokens for 1 basket token
     function depositsForTokens(address conaddr, uint numberoftokens) public view returns (uint256) {
-        return SafeMath.mul(numberoftokens, tokenPrice()).div(constituentPrice(conaddr));
+        (uint prc, uint8 decs) = constituentPrice(conaddr);
+        return SafeMath.mul(numberoftokens, tokenPrice()).mul(power(10, decs)).div(prc).div(power(10, decimals()));
     }
 
     /// @notice if deposits can be made for a constituents
@@ -291,7 +302,8 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         uint currentweight = 0;
         uint256 totaldeposit = totalDeposit();
         if (totaldeposit > depositThreshold){
-            currentweight = SafeMath.mul(100, constituents[conaddr].totalDeposit).mul(constituentPrice(conaddr)).div(totaldeposit);
+            (uint256 prc, uint8 decs) = constituentPrice(conaddr);
+            currentweight = SafeMath.mul(100, constituents[conaddr].totalDeposit).mul(prc).div(totaldeposit).div(power(10, decs));
         }else{
             return true;
         }
@@ -319,7 +331,6 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         }else{
             return karterasupply;
         }
-        return 0;
     }
 
     function power(uint256 a, uint8 b) internal pure returns(uint256) {
