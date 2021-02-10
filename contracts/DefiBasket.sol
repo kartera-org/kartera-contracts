@@ -44,7 +44,9 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
 
     // $1 to # of kartera tokens offered
     uint256 internal incentiveMultiplier;
-
+    
+    // $1 to # of kartera tokens offered
+    uint256 internal withdrawIncentiveMultiplier;
     /** 
         constituentAddress: constituent address
         clPriceAddress: chain link contract address
@@ -92,8 +94,19 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         incentiveMultiplier = multiplier;
     }
 
+    /// @notice set withdraw incentive token and multiplier
+    function setWithdrawIncentiveToken(address incentivetoken, uint256 multiplier) external onlyManagerOrOwner {
+        incentiveToken = incentivetoken;
+        withdrawIncentiveMultiplier = multiplier;
+    }
+
     /// @notice modify incentive multiplier
     function setIncentiveMultiplier(uint256 multiplier) external onlyManagerOrOwner {
+        incentiveMultiplier = multiplier;
+    }
+
+    /// @notice modify withdraw incentive multiplier
+    function setWithdrawIncentiveMultiplier(uint256 multiplier) external onlyManagerOrOwner {
         incentiveMultiplier = multiplier;
     }
 
@@ -168,14 +181,22 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     }
 
     /// @notice exchange basket tokens for removed constituent tokens
-    function withdrawComponent(address conaddr, uint256 numberoftokens) external payable {
+    function withdraw(address conaddr, uint256 numberoftokens) external payable returns(uint256) {
         require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
         require(!constituents[conaddr].active, "Cannot withdraw from active constituent");
-        uint256 amount = depositsForTokens(conaddr, numberoftokens);
+        uint256 tokenprice = tokenPrice();
+        uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice).div(power(10, decimals()));
+        uint256 tokensredeemed = depositsForDollar(conaddr, dollaramount);
         ERC20 token = ERC20(conaddr);
-        token.transfer(msg.sender, amount);
+        token.transfer(msg.sender, tokensredeemed);
         _burn(msg.sender, numberoftokens);
-        constituents[conaddr].totalDeposit -= amount;
+        constituents[conaddr].totalDeposit -= tokensredeemed;
+        uint256 incentivesOffered = withdrawIncentive(SafeMath.div(dollaramount, power(10, decimals())));
+        if(incentivesOffered>0){
+            ERC20 incentivetkn = ERC20(incentiveToken);
+            incentivetkn.transfer(msg.sender, incentivesOffered);
+        }
+        return incentivesOffered;
     }
     
     /// @notice update deposit threshold
@@ -222,40 +243,6 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         return (prc, decimals);
     }
 
-    // /// @notice get constituent price from chainlink onchain feed
-    // function constituentPrice(address addr) public view returns (uint256) {
-    //     return 100000000;
-    //     int curprice = currencyPrice();
-    //     AggregatorV3Interface priceFeed = AggregatorV3Interface(constituents[addr].clPriceAddress);
-    //     (
-    //         uint80 roundID, 
-    //         int price,
-    //         uint startedAt,
-    //         uint timeStamp,
-    //         uint80 answeredInRound
-    //     ) = priceFeed.latestRoundData();
-    //     require(timeStamp > 0, "Round not complete");
-    //     uint256 conprice = SafeMath.mul(uint256(curprice), uint256(price)).div(power(10, priceFeed.decimals()));
-    //     return conprice;
-    // }
-
-    // /// @notice get base currency price from chain link feed (ETH)
-    // function currencyPrice() public view returns (int) {
-    //     return 100000000;
-    //     AggregatorV3Interface priceFeed = AggregatorV3Interface(currencyAddress);
-    //     (
-    //         uint80 roundID, 
-    //         int price,
-    //         uint startedAt,
-    //         uint timeStamp,
-    //         uint80 answeredInRound
-    //     ) = priceFeed.latestRoundData();
-    //     console.log(priceFeed.decimals());
-    //     console.log(roundID );
-    //     require(timeStamp > 0, "Round not complete");
-    //     return price;
-    // }
-
     /// @notice get total deposit in $
     function totalDeposit() public view returns(uint256) {
         uint256 totaldeposit = 0;
@@ -293,7 +280,13 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     /// @notice number of inactive constituent tokens for 1 basket token
     function depositsForTokens(address conaddr, uint numberoftokens) public view returns (uint256) {
         (uint prc, uint8 decs) = constituentPrice(conaddr);
-        return SafeMath.mul(numberoftokens, tokenPrice()).mul(power(10, decs)).div(prc).div(power(10, decimals()));
+        return SafeMath.mul(numberoftokens, tokenPrice()).mul(power(10, decs)).div(prc);
+    }
+
+    /// @notice number of inactive constituent tokens for dollar amount 
+    function depositsForDollar(address conaddr, uint256 dollaramount) public view returns (uint256) {
+        (uint prc, uint8 decs) = constituentPrice(conaddr);
+        return SafeMath.mul(dollaramount, power(10, decs)).div(prc);
     }
 
     /// @notice if deposits can be made for a constituents
@@ -326,6 +319,21 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         ERC20 token = ERC20(incentiveToken);
         uint256 karterasupply = token.balanceOf(address(this));
         uint256 d = SafeMath.mul(incentiveMultiplier, dollaramount);
+        if(karterasupply >= d){
+            return d;
+        }else{
+            return karterasupply;
+        }
+    }
+
+    /// @notice get number of incentive tokens for $ withdrawn
+    function withdrawIncentive(uint256 dollaramount) public view returns (uint256) {
+        if(incentiveToken == address(0)){
+            return 0;
+        }
+        ERC20 token = ERC20(incentiveToken);
+        uint256 karterasupply = token.balanceOf(address(this));
+        uint256 d = SafeMath.mul(withdrawIncentiveMultiplier, dollaramount);
         if(karterasupply >= d){
             return d;
         }else{

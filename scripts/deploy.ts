@@ -23,16 +23,20 @@ async function main() {
   let state;
   await loadContracts();
 
-  const [alice] = await ethers.getSigners();
-  let i=0;
-  await sendMockTokens(constituents[i].addr, alice, erikaPubAdr, '100000');
+  let prc = await karteraPriceOracle.price(constituents[0].addr);
+  console.log('prc: ', prc[0].toString() );
+  console.log('prc: ', prc[1].toString() );
+
+  // const [alice] = await ethers.getSigners();
+  // let i=0;
+  // await sendMockTokens(constituents[i].addr, alice, erikaPubAdr, '100000');
 
   // try{
-    state = await defiBasket.acceptingDeposit(constituents[1].addr);
+    // state = await defiBasket.acceptingDeposit(constituents[1].addr);
   // }catch(e){
   //   state = false;
   // }
-  console.log('accepting deposit: ', state );
+  // console.log('accepting deposit: ', state );
   // await deployDefiBasket();
 
   // await updateConstituentByIndex(4);

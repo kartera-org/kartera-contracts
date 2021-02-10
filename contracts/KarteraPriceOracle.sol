@@ -29,14 +29,14 @@ contract KarteraPriceOracle {
     }
 
     function price(address tknaddress) view public returns (uint256, uint8) {
-        uint256 price = 1;
+        uint256 prc = 1;
         uint8 decimals = 0;
         for(uint8 i=0; i<tokenCLMap[tknaddress].length; i++){
-            (int prc, uint8 decs) = clPrice(tokenCLMap[tknaddress].addrLink[i]);
-            price = SafeMath.mul(price, uint256(prc));
+            (int clprc, uint8 decs) = clPrice(tokenCLMap[tknaddress].addrLink[i]);
+            prc = SafeMath.mul(prc, uint256(clprc));
             decimals += decs;
         }
-        return (price, decimals);
+        return (prc, decimals);
     }
 
     function clPrice(address addr) public view returns (int, uint8) {
