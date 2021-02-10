@@ -13,7 +13,7 @@
 // XXX: pragma solidity ^0.5.16;
 pragma solidity >=0.4.22 <0.8.0;
 
-// import "./SafeMath.sol";
+// XXX: import "./SafeMath.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract Timelock {
@@ -47,8 +47,8 @@ contract Timelock {
         admin_initialized = false;
     }
 
-    // function() external payable { }
-    function receive() external payable { }
+    // XXX: function() external payable { }
+    receive() external payable { }
 
     function setDelay(uint delay_) public {
         require(msg.sender == address(this), "Timelock::setDelay: Call must come from Timelock.");

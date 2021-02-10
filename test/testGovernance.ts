@@ -61,12 +61,53 @@ describe('Governor', () => {
             'GovernorAlpha::propose: proposer votes below proposal threshold',
         );
         
-        let proposalid = await this.gov.connect(this.carol).propose(
+        let tx = await this.gov.connect(this.carol).propose(
             [this.kartera.address], ['0'], ['mint(address,uint256)'],
             [encodeParameters(['address','uint256'], [this.defiBasket.address, ethers.utils.parseEther('25000000')])],
             'Mint 25m more kartera tokens to defiBasket',
         );
-        console.log('proposal id: ', proposalid['value'].toString() );
+
+        // await this.kartera.connect(this.bob).delegate(this.bob.address);
+
+
+        // tx = await this.gov.connect(this.bob).propose(
+        //     [this.kartera.address], ['0'], ['mint(address,uint256)'],
+        //     [encodeParameters(['address','uint256'], [this.alice.address, ethers.utils.parseEther('25000000')])],
+        //     'Mint 25m more kartera tokens to alice',
+        // );
+
+
+        // let proposal = await this.gov.getActions('2');
+
+        // console.log('calldatas: ', proposal );
+
+        // decode proposal call data
+        // let info = ethers.utils.defaultAbiCoder.decode([ 'address', 'uint256' ], proposal.calldatas[0]);
+
+        // console.log('proposal: ', info[1].toString() );
+        // console.log('tx: ', tx );
+
+        // let count = await this.gov.proposalCount();
+        // console.log('count: ', count.toString() );
+
+        // let info = ethers.utils.defaultAbiCoder.decode([ 'address[]', 'uint[]', 'string[]', 'bytes[]', 'string' ], ethers.utils.hexDataSlice(tx.data, 4));
+
+        // console.log('info: ', info );
+        
+        // let abi = [
+        // "event ProposalCreated(uint id, address proposer, address[] targets, uint[] values, string[] signatures, bytes[] calldatas, uint startBlock, uint endBlock, string description)"
+        // ];
+
+        // let iface = new ethers.utils.Interface(abi);
+
+        // console.log('parsed date: ', iface.parseTransaction(proposalid.data) );
+
+        // console.log('proposalid: ', proposalid.data.toString() );
+
+
+        // console.log('kartera address: ', this.kartera.address );
+        // let proposalinfo = await this.gov.getActions('1');
+        // console.log('proposalinfo: ', proposalinfo[4].toString() );
 
         await time.advanceBlock();
         await this.gov.connect(this.carol).castVote('1', true);

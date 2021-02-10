@@ -1,4 +1,6 @@
 import { ethers } from "hardhat";
+import { KarteraToken } from "../typechain";
+const { expectRevert, time } = require('@openzeppelin/test-helpers');
 
 let karteraToken:any;
 let defiBasket:any;
@@ -8,6 +10,10 @@ let karteraaddress = "0x1d10450D4cfA9241EaB34Ee7E6b77956E29E6794";
 let defiBasketaddress = '0x5DbA2C3F2ea8BaF8d7C3349aA748C5f0A21cD1d8';
 // let karteraPriceOracleAddr = '0x293b6D22E5774c9615E2fb1D3C18B4E36B61C5e8';
 let karteraPriceOracleAddr = '0x011A0C72433D230575Ed12bD316D4Be3359C86A4';
+
+let gov:any;
+let govaddress = '';
+
 let zhiPubAddr = "0xbb31ae334462B9a736EA1DE2a61042BB0B106165";
 let erikaPubAdr ='0xc0AE19cf32285582f52991477A2a5fEa844f7A80';
 
@@ -19,13 +25,40 @@ const constituents = [
   {name:'MockYfi', addr:'0xd9D54E7016306A3009629833C2409Fd04F25A118', weight:15, weightTol:5, claddr:"0xC5d1B1DEb2992738C0273408ac43e1e906086B6C"},
 ];
 
-async function main() {
-  let state;
-  await loadContracts();
+/** Ganache deployed contract information
+ * alice:  0x237842f1dA167E0E7d528cD1b4AeA0c8BcF43fb5
+ * kartera address:  0x2faC449F24D8916cD5Ef5982565c3cCAE7F4B99A
+ * timelock address:  0x740613af1EBbB1bDCca4b15A85adBbF6B4687b76
+ * gov address:  0xc433c1979917C686B265675b68068B48a7096d8E
+ * 
+ */
 
-  let prc = await karteraPriceOracle.price(constituents[0].addr);
-  console.log('prc: ', prc[0].toString() );
-  console.log('prc: ', prc[1].toString() );
+async function main() {
+
+  await loadContracts();
+  // await karteraToken.approve('0x585d07Af62616C17803f655A925C73d7759Bc986', ethers.utils.parseEther('10'));
+  // let tx = await karteraToken.transfer('0x585d07Af62616C17803f655A925C73d7759Bc986', ethers.utils.parseEther('10'));
+  // console.log('tx: ', tx );
+  // await time.advanceBlock();
+
+  await proposalState('1');
+  const [alice] = await ethers.getSigners();
+  await getReceipt('1', alice.address)
+
+  // await castVote('1', true, alice);
+
+  // await getReceipt('1', alice.address)
+
+  // let info = await getProposalInformation('1');
+  // for(let i=0; i<info.length; i++){
+  //   console.log(i, ': ', info[i].toString() );
+  // }
+
+  // await makeProposal();
+
+  // await testDeployGov();
+  
+  // await loadContracts();
 
   // const [alice] = await ethers.getSigners();
   // let i=0;
@@ -43,6 +76,105 @@ async function main() {
 
 }
 
+function encodeParameters(types:any, values:any) {
+  const abi = new ethers.utils.AbiCoder();
+  return abi.encode(types, values);
+}
+
+async function makeProposal() {
+  const [alice] = await ethers.getSigners();
+
+  karteraaddress = "0x2faC449F24D8916cD5Ef5982565c3cCAE7F4B99A";
+  let govaddress = "0xc433c1979917C686B265675b68068B48a7096d8E";
+
+  const KarteraToken = await ethers.getContractFactory("KarteraToken");
+  karteraToken = await KarteraToken.attach(karteraaddress);
+
+  const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
+  let gov  = await GovAlpha.attach(govaddress);
+
+  await karteraToken.connect(alice).delegate(alice.address);
+
+  let tx = await gov.connect(alice).propose(
+    [karteraToken.address], ['0'], ['mint(address,uint256)'],
+    [encodeParameters(['address','uint256'], [alice.address, ethers.utils.parseEther('25000000')])],
+    'Mint 25m more kartera tokens to defiBasket',
+  );
+
+  decodeGovTX(tx.data);
+}
+
+function decodeGovTX(data:any) {
+  let info = ethers.utils.defaultAbiCoder.decode([ 'address[]', 'uint[]', 'string[]', 'bytes[]', 'string' ], ethers.utils.hexDataSlice(data, 4));
+
+  console.log('proposal TX info: ', info );
+}
+
+async function getProposalInformation(id:string){
+  let proposal = await gov.getActions('1');
+  // console.log('target: ', proposal );
+
+  console.log('target: ', proposal[0] );
+  console.log('signature: ', proposal[2] );
+
+  let info = ethers.utils.defaultAbiCoder.decode([ 'address', 'uint256' ], proposal.calldatas[0]);
+  console.log('call datas: ', info );
+
+  return info;
+}
+
+async function getReceipt (id:string, addr:string) {
+  let receipt = await gov.getReceipt(id, addr);
+  console.log('receipt: ', receipt.votes.toString() );
+}
+
+async function castVote(id:string, support:boolean, signer:any) {
+
+  await gov.connect(signer).castVote(id, support);
+
+}
+
+async function proposalState(id:string) {
+  // let govaddress = "0xc433c1979917C686B265675b68068B48a7096d8E";
+  // const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
+  // let gov  = await GovAlpha.attach(govaddress);
+
+  let state = await gov.state(id);
+
+  console.log('state: ', state );
+
+}
+
+async function testDeployGov () {
+
+  const [alice] = await ethers.getSigners();
+
+  console.log('alice: ', alice.address );
+  const KarteraToken = await ethers.getContractFactory('KarteraToken');
+  karteraToken = await KarteraToken.deploy();
+  console.log('kartera address: ', karteraToken.address );
+
+  await karteraToken.mint(alice.address, ethers.utils.parseEther('1000000'));
+
+  // await karteraToken.connect(alice).delegate(alice.address);
+
+
+  const Timelock = await ethers.getContractFactory('Timelock');
+  let timelock = await Timelock.deploy(alice.address, time.duration.days(2).toString())
+  await karteraToken.transferOwnership(timelock.address);
+
+  console.log('timelock address: ', timelock.address );
+
+
+  const GovAlpha = await ethers.getContractFactory('GovernorAlpha');
+  let gov = await GovAlpha.deploy(timelock.address, karteraToken.address, alice.address);
+  console.log('gov address: ', gov.address );
+
+  await timelock.setPendingAdmin(gov.address);
+  await gov.__acceptAdmin();
+
+}
+
 async function sendMockTokens(tokenaddr:string, signer:any, to:string, amount:string){
 
   var contract = await ethers.getContractFactory("MockAave");
@@ -55,6 +187,12 @@ async function sendMockTokens(tokenaddr:string, signer:any, to:string, amount:st
 }
 
 async function loadContracts() {
+  /**
+   * change contract address here 
+   */
+
+  karteraaddress = "0x2faC449F24D8916cD5Ef5982565c3cCAE7F4B99A";
+
   
   const KarteraToken = await ethers.getContractFactory("KarteraToken");
   karteraToken = await KarteraToken.attach(karteraaddress);
@@ -64,6 +202,13 @@ async function loadContracts() {
 
   const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
   karteraPriceOracle = await KarteraPriceOracle.attach(karteraPriceOracleAddr);
+
+  /**
+   * change contract address here 
+   */
+  let govaddress = "0xc433c1979917C686B265675b68068B48a7096d8E";
+  const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
+  gov  = await GovAlpha.attach(govaddress);
 }
 
 async function deployKarteraToken(){
