@@ -95,6 +95,10 @@ async function deployDefiBasket(){
 
   // let multiplier = 100;
   // await defiBasket.setIncentiveToken(karteraToken.address, ethers.utils.parseEther(multiplier.toString()))
+
+  // let withdrawmultiplier = 100;
+
+  // await defiBasket.setWithdrawIncentiveToken(karteraToken.address, ethers.utils.parseEther(withdrawmultiplier.toString()));
 }
 
 async function deployKarteraPriceOracle() {
