@@ -39,14 +39,16 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     // parameter overrides weight of each constituent until $1m
     uint256 internal depositThreshold =  1000000000000000000000000;
 
-    // address of token offered as incentive kart token address
-    address internal incentiveToken;
+    // address of governance token offered as incentive kart token address
+    address internal governanceToken;
 
     // $1 to # of kartera tokens offered
     uint256 internal incentiveMultiplier;
     
     // $1 to # of kartera tokens offered
     uint256 internal withdrawIncentiveMultiplier;
+
+    uint256 internal withdrawCostMultiplier;
     /** 
         constituentAddress: constituent address
         clPriceAddress: chain link contract address
@@ -67,10 +69,10 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         uint8 decimals;
     }
 
-    /// @notice contract constructor make sender the manger and sets incentive token to zero address
+    /// @notice contract constructor make sender the manger and sets governance token to zero address
     constructor() public {
         manager = msg.sender;
-        incentiveToken = address(0);
+        governanceToken = address(0);
     }
 
     modifier onlyManager() {
@@ -88,16 +90,15 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         manager = newmanager;
     }
 
-    /// @notice set incentive token and multiplier
-    function setIncentiveToken(address incentivetoken, uint256 multiplier) external onlyManagerOrOwner {
-        incentiveToken = incentivetoken;
+    /// @notice set governance token incentive multiplier
+    function setGovernanceToken(address token_, uint256 multiplier) external onlyManagerOrOwner {
+        governanceToken = token_;
         incentiveMultiplier = multiplier;
     }
 
-    /// @notice set withdraw incentive token and multiplier
-    function setWithdrawIncentiveToken(address incentivetoken, uint256 multiplier) external onlyManagerOrOwner {
-        incentiveToken = incentivetoken;
-        withdrawIncentiveMultiplier = multiplier;
+    /// @notice mint additional tokens by basket
+    function mint(address _to, uint256 _amount) external onlyOwner{
+        _mint(_to, _amount);
     }
 
     /// @notice modify incentive multiplier
@@ -107,7 +108,14 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
 
     /// @notice modify withdraw incentive multiplier
     function setWithdrawIncentiveMultiplier(uint256 multiplier) external onlyManagerOrOwner {
-        incentiveMultiplier = multiplier;
+        require(governanceToken != address(0), 'Governance token not set');
+        withdrawIncentiveMultiplier = multiplier;
+    }
+
+    /// @notice set/modify active constituent withdraw cost multiplier
+    function setWithdrawCostMultiplier(uint256 multiplier) external onlyManagerOrOwner {
+        require(governanceToken != address(0), 'Governance token not set');
+        withdrawCostMultiplier = multiplier;
     }
 
     /// @notice price oracle address
@@ -117,7 +125,7 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
 
     /// @notice add constituent to a basket
     function addConstituent(address conaddr, uint8 weight, uint8 weighttol) external onlyManagerOrOwner {
-        require(constituents[conaddr].constituentAddress != conaddr || !constituents[conaddr].active, "Constituent already exists and is active");
+        require(constituents[conaddr].constituentAddress != conaddr , "Constituent already exists");
         require( totalWeight + weight <= 100, 'Total Weight Exceeds 100%');
         constituents[conaddr].constituentAddress = conaddr;
         constituents[conaddr].weight = weight;
@@ -134,9 +142,12 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         numberOfConstituents++;
     }
 
-    /// @notice mint additional tokens by basket
-    function mint(address _to, uint256 _amount) external onlyOwner{
-        _mint(_to, _amount);
+    // @notice activate constituent
+    function activateConstituent(address conaddr) external onlyManagerOrOwner {
+        require(constituents[conaddr].constituentAddress == conaddr , "Constituent does not exists");
+        require(totalWeight + constituents[conaddr].weight <= 100, 'Total Weight Exceeds 100%');
+        totalWeight += constituents[conaddr].weight;
+        constituents[conaddr].active = true;
     }
 
     /// @notice remove constituent
@@ -173,15 +184,22 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
 
         uint256 incentivesOffered = incentive(SafeMath.div(amount, power(10, decimals())));
         if(incentivesOffered>0){
-            ERC20 incentivetkn = ERC20(incentiveToken);
-            incentivetkn.transfer(msg.sender, incentivesOffered);
+            ERC20 tkn = ERC20(governanceToken);
+            tkn.transfer(msg.sender, incentivesOffered);
         }
 
         return (minttokens, incentivesOffered);
     }
 
+    /// @notice transfer tokens
+    function transferTokens(address conaddr, address to, uint amount) external onlyOwner {
+        require(constituents[conaddr].constituentAddress == conaddr && !constituents[conaddr].active, "Constituent does not exist or is active");
+        ERC20 token = ERC20(conaddr);
+        token.transfer(to, amount);
+    }
+
     /// @notice exchange basket tokens for removed constituent tokens
-    function withdraw(address conaddr, uint256 numberoftokens) external payable returns(uint256) {
+    function withdrawInactive(address conaddr, uint256 numberoftokens) external payable returns(uint256) {
         require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
         require(!constituents[conaddr].active, "Cannot withdraw from active constituent");
         uint256 tokenprice = tokenPrice();
@@ -193,10 +211,28 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         constituents[conaddr].totalDeposit -= tokensredeemed;
         uint256 incentivesOffered = withdrawIncentive(SafeMath.div(dollaramount, power(10, decimals())));
         if(incentivesOffered>0){
-            ERC20 incentivetkn = ERC20(incentiveToken);
-            incentivetkn.transfer(msg.sender, incentivesOffered);
+            ERC20 tkn = ERC20(governanceToken);
+            tkn.transfer(msg.sender, incentivesOffered);
         }
         return incentivesOffered;
+    }
+
+    /// @notice exchange basket tokens for active constituent tokens
+    function withdrawActive(address conaddr, uint256 numberoftokens) external payable returns(uint256) {
+        require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
+        require(constituents[conaddr].active, "Constituent is inactive");
+        uint256 tokenprice = tokenPrice();
+        uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice);
+        uint256 withdrawcost = withdrawCost(SafeMath.div(dollaramount, power(10, decimals()))).div(power(10, decimals()));
+        ERC20 tkn = ERC20(governanceToken);
+        tkn.transferFrom(msg.sender, address(this), withdrawcost);
+
+        dollaramount = SafeMath.div(dollaramount, power(10, decimals()));
+        uint256 tokensredeemed = depositsForDollar(conaddr, dollaramount);
+        ERC20 token = ERC20(conaddr);
+        token.transfer(msg.sender, tokensredeemed);
+        _burn(msg.sender, numberoftokens);
+        constituents[conaddr].totalDeposit -= tokensredeemed;
     }
     
     /// @notice update deposit threshold
@@ -219,6 +255,11 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
                 constituents[conaddr].active,
                 constituents[conaddr].totalDeposit,
                 constituents[conaddr].decimals);
+    }
+
+    /// @notice get all constituents including active and inactive
+    function constituentStatus(address conaddr) public view returns (bool) {
+        return constituents[conaddr].active;
     }
 
     /// @notice get all constituents including active and inactive
@@ -288,6 +329,14 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         (uint prc, uint8 decs) = constituentPrice(conaddr);
         return SafeMath.mul(dollaramount, power(10, decs)).div(prc);
     }
+        
+    /// @notice number of incentive tokens required to withdraw constituent
+    function constituentWithdrawCost(uint256 numberoftokens) public view returns (uint256){
+        uint256 tokenprice = tokenPrice();
+        uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice);
+        uint256 withdrawcost = withdrawCost(SafeMath.div(dollaramount, power(10, decimals()))).div(power(10, decimals()));
+        return withdrawcost;
+    }
 
     /// @notice if deposits can be made for a constituents
     function acceptingDeposit(address conaddr) public view returns (bool) {
@@ -311,12 +360,17 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         return manager;
     }
 
+    /// @notice get governance token address
+    function getGovernanceTokenAddress() public view returns (address) {
+        return governanceToken;
+    }
+
     /// @notice get number of incentive tokens for $ deposit
     function incentive(uint256 dollaramount) public view returns (uint256) {
-        if(incentiveToken == address(0)){
+        if(governanceToken == address(0)){
             return 0;
         }
-        ERC20 token = ERC20(incentiveToken);
+        ERC20 token = ERC20(governanceToken);
         uint256 karterasupply = token.balanceOf(address(this));
         uint256 d = SafeMath.mul(incentiveMultiplier, dollaramount);
         if(karterasupply >= d){
@@ -328,10 +382,10 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
 
     /// @notice get number of incentive tokens for $ withdrawn
     function withdrawIncentive(uint256 dollaramount) public view returns (uint256) {
-        if(incentiveToken == address(0)){
+        if(governanceToken == address(0)){
             return 0;
         }
-        ERC20 token = ERC20(incentiveToken);
+        ERC20 token = ERC20(governanceToken);
         uint256 karterasupply = token.balanceOf(address(this));
         uint256 d = SafeMath.mul(withdrawIncentiveMultiplier, dollaramount);
         if(karterasupply >= d){
@@ -339,6 +393,13 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
         }else{
             return karterasupply;
         }
+    }
+
+    /// @notice get number of tokens to depost inorder to withdraw from active constituent
+    function withdrawCost(uint256 longdollaramount) public view returns (uint256) {
+        require(governanceToken != address(0), 'cannot withdraw');
+        uint256 d = SafeMath.mul(withdrawCostMultiplier, longdollaramount);
+        return d;
     }
 
     function power(uint256 a, uint8 b) internal pure returns(uint256) {

@@ -6,9 +6,7 @@ let karteraToken:any;
 let defiBasket:any;
 let karteraPriceOracle:any;
 let karteraaddress = "0x1d10450D4cfA9241EaB34Ee7E6b77956E29E6794";
-// let defiBasketaddress = "0x06cfFb6EDEB4B2E0D15B1b37d007df4ccB88D6a6";
-let defiBasketaddress = '0x5DbA2C3F2ea8BaF8d7C3349aA748C5f0A21cD1d8';
-// let karteraPriceOracleAddr = '0x293b6D22E5774c9615E2fb1D3C18B4E36B61C5e8';
+let defiBasketaddress = '0x690ec9bC4D843002Cb8c12D0F940e415BefDE3F2';
 let karteraPriceOracleAddr = '0x011A0C72433D230575Ed12bD316D4Be3359C86A4';
 
 let gov:any;
@@ -16,6 +14,7 @@ let govaddress = '';
 
 let zhiPubAddr = "0xbb31ae334462B9a736EA1DE2a61042BB0B106165";
 let erikaPubAdr ='0xc0AE19cf32285582f52991477A2a5fEa844f7A80';
+let jaiPubAddr ='0x0467C705ce681d25a4f5E44BA7252973C6d305B1';
 
 const constituents = [
   {name:'MockAave', addr:'0xefF313696D5513Ab2d7763a967a64d26B0fBB793', weight:25, weightTol:5, claddr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
@@ -36,14 +35,39 @@ const constituents = [
 async function main() {
 
   await loadContracts();
+  // const [alice] = await ethers.getSigners();
+
+  // let ts = await defiBasket.totalSupply();
+  // console.log('ts: ', ethers.utils.formatUnits(ts) );
+  
+  await deployDefiBasket();
+
+
+  // await defiBasket.addConstituent(constituents[0].addr, constituents[0].weight, constituents[0].weightTol)
+
+  // let details = await defiBasket.getConstituentDetails(constituents[0].addr);
+  // console.log('details: ', details );
+
+  // let n = await defiBasket.numberOfActiveConstituents();
+  // console.log('n: ', n.toString() );
+
+  // await defiBasket.removeConstituent(constituents[0].addr);
+
+  // n = await defiBasket.numberOfActiveConstituents();
+  // console.log('n: ', n.toString() );
+
+  // await sendMockTokens( constituents[0].addr, alice, jaiPubAddr, '100000');
+  // await sendMockTokens( constituents[1].addr, alice, jaiPubAddr, '100000');
+  // await sendMockTokens( constituents[2].addr, alice, jaiPubAddr, '100000');
+  // await sendMockTokens( constituents[3].addr, alice, jaiPubAddr, '100000');
+  // await sendMockTokens( constituents[4].addr, alice, jaiPubAddr, '100000');
   // await karteraToken.approve('0x585d07Af62616C17803f655A925C73d7759Bc986', ethers.utils.parseEther('10'));
   // let tx = await karteraToken.transfer('0x585d07Af62616C17803f655A925C73d7759Bc986', ethers.utils.parseEther('10'));
   // console.log('tx: ', tx );
   // await time.advanceBlock();
 
-  await proposalState('1');
-  const [alice] = await ethers.getSigners();
-  await getReceipt('1', alice.address)
+  // await proposalState('1');
+  // await getReceipt('1', alice.address)
 
   // await castVote('1', true, alice);
 
@@ -73,6 +97,8 @@ async function main() {
   // await deployDefiBasket();
 
   // await updateConstituentByIndex(4);
+
+  console.log('done...');
 
 }
 
@@ -183,7 +209,7 @@ async function sendMockTokens(tokenaddr:string, signer:any, to:string, amount:st
   await token.connect(signer).approve(to, ethers.utils.parseEther(amount));
   let tx = await token.transfer(to, ethers.utils.parseEther(amount));
 
-  console.log('tx: ', tx );
+  console.log('tx: ', tx['hash'] );
 }
 
 async function loadContracts() {
@@ -191,9 +217,6 @@ async function loadContracts() {
    * change contract address here 
    */
 
-  karteraaddress = "0x2faC449F24D8916cD5Ef5982565c3cCAE7F4B99A";
-
-  
   const KarteraToken = await ethers.getContractFactory("KarteraToken");
   karteraToken = await KarteraToken.attach(karteraaddress);
 
@@ -206,9 +229,8 @@ async function loadContracts() {
   /**
    * change contract address here 
    */
-  let govaddress = "0xc433c1979917C686B265675b68068B48a7096d8E";
-  const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
-  gov  = await GovAlpha.attach(govaddress);
+  // const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
+  // gov  = await GovAlpha.attach(govaddress);
 }
 
 async function deployKarteraToken(){
@@ -222,7 +244,7 @@ async function deployKarteraToken(){
 }
 async function deployDefiBasket(){
 
-  // //deploy defiBasket Contract
+  // // deploy defiBasket Contract
   // const DefiBasket = await ethers.getContractFactory("DefiBasket");
   // let defiBasket = await DefiBasket.deploy();
   // console.log('defiBasket contract id: ', defiBasket.address);
@@ -231,7 +253,7 @@ async function deployDefiBasket(){
 
   // await defiBasket.setPriceOracleAddress(karteraPriceOracleAddr);
 
-  // let i=0;
+  // let i=4;
   // await defiBasket.addConstituent(constituents[i].addr, constituents[i].weight, constituents[i].weightTol);
   // console.log('done: ', i );
 
@@ -239,11 +261,15 @@ async function deployDefiBasket(){
   // await karteraToken.mint(defiBasket.address, ethers.utils.parseEther(fundBasket.toString()))
 
   // let multiplier = 100;
-  // await defiBasket.setIncentiveToken(karteraToken.address, ethers.utils.parseEther(multiplier.toString()))
+  // await defiBasket.setGovernanceToken(karteraToken.address, ethers.utils.parseEther(multiplier.toString()))
 
   // let withdrawmultiplier = 100;
+  // await defiBasket.setWithdrawIncentiveMultiplier(ethers.utils.parseEther(withdrawmultiplier.toString()));
 
-  // await defiBasket.setWithdrawIncentiveToken(karteraToken.address, ethers.utils.parseEther(withdrawmultiplier.toString()));
+  let withdrawActivemultiplier = 1;
+  console.log('setting active withdraw cost: ',  );
+  await defiBasket.setWithdrawCostMultiplier(ethers.utils.parseEther(withdrawActivemultiplier.toString()));
+
 }
 
 async function deployKarteraPriceOracle() {
