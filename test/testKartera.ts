@@ -3,7 +3,7 @@
 
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
-import { KarteraToken__factory, KarteraToken } from "../typechain";
+import { KarteraToken__factory, KarteraToken, KarteraPriceOracle } from "../typechain";
 import { DefiBasket__factory, DefiBasket } from "../typechain";
 
 import { MockAave__factory, MockAave } from "../typechain";
@@ -25,28 +25,6 @@ const { expect } = chai;
 let provider = ethers.getDefaultProvider();
 
 describe("Kartera Token", function () {
-  let KarteraToken: KarteraToken__factory;
-  let kartera: KarteraToken;
-  let DefiBasket: DefiBasket__factory;
-  let defiBasket: DefiBasket;
-
-  let MockAave: MockAave__factory;
-  let MockComp: MockAave__factory;
-  let MockMkr: MockAave__factory;
-  let MockSnx: MockAave__factory;
-  let MockSushi: MockAave__factory;
-  let MockUma: MockAave__factory;
-  let MockUni: MockAave__factory;
-  let MockYfi: MockAave__factory;
-
-  let mockAave: MockAave;
-  let mockComp: MockComp;
-  let mockMkr: MockMkr;
-  let mockSnx: MockSnx;
-  let mockSushi: MockSushi;
-  let mockUma: MockUma;
-  let mockUni: MockUni;
-  let mockYfi: MockYfi;
 
   let owner: SignerWithAddress;
   let addr1: SignerWithAddress;
@@ -56,29 +34,35 @@ describe("Kartera Token", function () {
   before(async function () {
     // Get the ContractFactory and Signers here.
 
-    KarteraToken = (await ethers.getContractFactory("KarteraToken")) as KarteraToken__factory;
-    kartera = await KarteraToken.deploy();
+    this.KarteraToken = await ethers.getContractFactory("KarteraToken");
+    this.kartera = await this.KarteraToken.deploy();
     
-    DefiBasket = (await ethers.getContractFactory("DefiBasket")) as DefiBasket__factory;
-    defiBasket = await DefiBasket.deploy();
-    
-    MockAave = (await ethers.getContractFactory("MockAave")) as MockAave__factory;
-    MockComp = (await ethers.getContractFactory("MockComp")) as MockComp__factory;
-    MockMkr = (await ethers.getContractFactory("MockMkr")) as MockMkr__factory;
-    MockSnx = (await ethers.getContractFactory("MockSnx")) as MockSnx__factory;
-    MockSushi = (await ethers.getContractFactory("MockSushi")) as MockSushi__factory;
-    MockUma = (await ethers.getContractFactory("MockUma")) as MockUma__factory;
-    MockUni = (await ethers.getContractFactory("MockUni")) as MockUni__factory;
-    MockYfi = (await ethers.getContractFactory("MockYfi")) as MockYfi__factory;
+    this.DefiBasket = await ethers.getContractFactory("DefiBasket");
+    this.defiBasket = await this.DefiBasket.deploy();
 
-    mockAave = await MockAave.deploy();
-    mockComp = await MockComp.deploy();
-    mockMkr = await MockMkr.deploy();
-    mockSnx = await MockSnx.deploy();
-    mockSushi = await MockSushi.deploy();
-    mockUma = await MockUma.deploy();
-    mockUni = await MockUni.deploy();
-    mockYfi = await MockYfi.deploy();
+    this.KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
+    this.karteraPriceOracle = await this.KarteraPriceOracle.deploy();
+    
+    await this.defiBasket.setPriceOracleAddress(this.karteraPriceOracle.address);
+    
+    
+    this.MockAave = await ethers.getContractFactory("MockAave");
+    this.MockComp = await ethers.getContractFactory("MockComp");
+    this.MockMkr = await ethers.getContractFactory("MockMkr");
+    this.MockSnx = await ethers.getContractFactory("MockSnx");
+    this.MockSushi = await ethers.getContractFactory("MockSushi");
+    this.MockUma = await ethers.getContractFactory("MockUma");
+    this.MockUni = await ethers.getContractFactory("MockUni");
+    this.MockYfi = await ethers.getContractFactory("MockYfi");
+
+    this.mockAave = await this.MockAave.deploy();
+    this.mockComp = await this.MockComp.deploy();
+    this.mockMkr = await this.MockMkr.deploy();
+    this.mockSnx = await this.MockSnx.deploy();
+    this.mockSushi = await this.MockSushi.deploy();
+    this.mockUma = await this.MockUma.deploy();
+    this.mockUni = await this.MockUni.deploy();
+    this.mockYfi = await this.MockYfi.deploy();
 
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
 
@@ -90,36 +74,36 @@ describe("Kartera Token", function () {
 
   describe("Deployment", function () {
     it("Kartera token has the right owner", async function () {
-      expect(await kartera.owner()).to.equal(owner.address);
+      expect(await this.kartera.owner()).to.equal(owner.address);
     });
 
     it("DefiBasket has the right owner", async function () {
-      expect(await defiBasket.owner()).to.equal(owner.address);
+      expect(await this.defiBasket.owner()).to.equal(owner.address);
     });
 
     //only checking MockAAVE other mocks are copy paste with name and symbol change
 
     it("MockAave has the right owner", async function () {
-      expect(await mockAave.owner()).to.equal(owner.address);
+      expect(await this.mockAave.owner()).to.equal(owner.address);
     });
 
     it("MockAave balance set at 1b tokens", async function () {
-      const ownerBalance = await mockAave.balanceOf(owner.address);
-      expect(await mockAave.totalSupply()).to.equal(ethers.utils.parseEther("1000000000"));
+      const ownerBalance = await this.mockAave.balanceOf(owner.address);
+      expect(await this.mockAave.totalSupply()).to.equal(ethers.utils.parseEther("1000000000"));
     });
 
     it("owner balance set at 1b tokens", async function () {
-      const ownerBalance = await mockAave.balanceOf(owner.address);
+      const ownerBalance = await this.mockAave.balanceOf(owner.address);
       expect(ownerBalance).to.equal(ethers.utils.parseEther("1000000000"));
     });
 
     it("mockAave name check", async function () {
-      const name = await mockAave.name();
+      const name = await this.mockAave.name();
       expect(name).to.equal("Aave Mock Token");
     });
 
     it("mockAave symbol check", async function () {
-      const symbol = await mockAave.symbol();
+      const symbol = await this.mockAave.symbol();
       expect(symbol).to.equal("mAAVE");
     });
 
@@ -127,117 +111,117 @@ describe("Kartera Token", function () {
 
   describe("DefiBasket functions", function () {
     it("DefiBasket name check", async function () {
-      const name = await defiBasket.name();
+      const name = await this.defiBasket.name();
       expect(name).to.equal("Kartera Defi Basket");
     });
 
     it("DefiBasket symbol check", async function () {
-      const symbol = await defiBasket.symbol();
+      const symbol = await this.defiBasket.symbol();
       expect(symbol).to.equal("kDEFI");
     });
 
     it("has correct total supply", async function () {
-      const totalsupply = await defiBasket.totalSupply();
+      const totalsupply = await this.defiBasket.totalSupply();
       expect(totalsupply).to.equal(0);
     });
 
     it("Total # of constituents check ", async function () {
-      await defiBasket.addConstituent(mockAave.address, 20, 30, "0xF7904a295A029a3aBDFFB6F12755974a958C7C25");
-      await defiBasket.addConstituent(mockComp.address, 20, 30, "0xF7904a295A029a3aBDFFB6F12755974a958C7C25");
-      await defiBasket.addConstituent(mockMkr.address, 10, 30, "0xF7904a295A029a3aBDFFB6F12755974a958C7C25");
-      await defiBasket.addConstituent(mockSnx.address, 10, 30, "0xF7904a295A029a3aBDFFB6F12755974a958C7C25");
-      await defiBasket.addConstituent(mockSushi.address, 10, 30, "0xF7904a295A029a3aBDFFB6F12755974a958C7C25");
-      await defiBasket.addConstituent(mockUma.address, 10, 30, "0xF7904a295A029a3aBDFFB6F12755974a958C7C25");
-      await defiBasket.addConstituent(mockUni.address, 10, 30, "0xF7904a295A029a3aBDFFB6F12755974a958C7C25");
-      await defiBasket.addConstituent(mockYfi.address, 10, 30, "0xF7904a295A029a3aBDFFB6F12755974a958C7C25");
+      await this.defiBasket.addConstituent(this.mockAave.address, 20, 30);
+      await this.defiBasket.addConstituent(this.mockComp.address, 20, 30);
+      await this.defiBasket.addConstituent(this.mockMkr.address, 10, 30);
+      await this.defiBasket.addConstituent(this.mockSnx.address, 10, 30);
+      await this.defiBasket.addConstituent(this.mockSushi.address, 10, 30);
+      await this.defiBasket.addConstituent(this.mockUma.address, 10, 30);
+      await this.defiBasket.addConstituent(this.mockUni.address, 10, 30);
+      await this.defiBasket.addConstituent(this.mockYfi.address, 10, 30);
 
-      await defiBasket.removeConstituent(mockYfi.address);
+      await this.defiBasket.removeConstituent(this.mockYfi.address);
 
-      const numberOfCons = await defiBasket.numberOfAllConstituents();
+      const numberOfCons = await this.defiBasket.numberOfAllConstituents();
       expect(numberOfCons).to.equal(8);
     });
 
      it("Number of active constituents check", async function () {
-      const numberOfCons = await defiBasket.numberOfActiveConstituents();
+      const numberOfCons = await this.defiBasket.numberOfActiveConstituents();
       expect(numberOfCons).to.equal(7);
     });
 
     it("Total Supply check", async function () {
-      const divisor = await defiBasket.totalSupply();
+      const divisor = await this.defiBasket.totalSupply();
       expect(divisor).to.equal(0);
     });
 
     it("Accepting deposit check", async function () {
-      const acceptingdeposit = await defiBasket.acceptingDeposit(mockAave.address);
+      const acceptingdeposit = await this.defiBasket.acceptingDeposit(this.mockAave.address);
       expect(acceptingdeposit).to.equal(true);
     });
 
     it("Token price check", async function () {
-      const tokenprice = await defiBasket.tokenPrice();
-      expect(tokenprice).to.equal(100000000000);
+      const tokenprice = await this.defiBasket.tokenPrice();
+      expect(tokenprice).to.equal(ethers.utils.parseEther('100'));
     });
   });
 
   describe("DefiBasket functions reverts", function () {
 
     it("Adding existing contract should fail", async function(){
-      await expect( defiBasket.addConstituent(mockAave.address, 20, 30, '0xF7904a295A029a3aBDFFB6F12755974a958C7C25')).to.be.revertedWith('Constituent already exists and is active');
+      await expect( this.defiBasket.addConstituent(this.mockAave.address, 20, 30)).to.be.revertedWith('Constituent already exists');
     });
 
     it(" Should fail to remove constituent that does not exist  ", async function(){
       let addr = "0xF7904a295A029a3aBDFFB6F12755974a958C7C25";
-      await expect( defiBasket.removeConstituent(addr)).to.be.revertedWith('Constituent does not exist');
+      await expect( this.defiBasket.removeConstituent(addr)).to.be.revertedWith('Constituent does not exist');
     });
 
     it('Should fail to update contract because of Constituent does not exist', async function () {
       let addr = "0xF7904a295A029a3aBDFFB6F12755974a958C7C25";
-      await expect( defiBasket.updateConstituent(addr, 30, 30)).to.be.revertedWith("Constituent does not exist");
+      await expect( this.defiBasket.updateConstituent(addr, 30, 30)).to.be.revertedWith("Constituent does not exist");
     });
 
     it('Should fail to update contract because of max weight', async function () {
-      await expect( defiBasket.updateConstituent(mockAave.address, 50, 30)).to.be.revertedWith("Total Weight Exceeds 100%");
+      await expect( this.defiBasket.updateConstituent(this.mockAave.address, 50, 30)).to.be.revertedWith("Total Weight Exceeds 100%");
     });
 
     it(" Should fail to remove constituent that does not exist  ", async function(){
       let addr = "0xF7904a295A029a3aBDFFB6F12755974a958C7C25";
-      await expect( defiBasket.removeConstituent(addr)).to.be.revertedWith('Constituent does not exist');
+      await expect( this.defiBasket.removeConstituent(addr)).to.be.revertedWith('Constituent does not exist');
     });
 
     it(" Should fail to make deposit because contract is not active  ", async function(){
       let addr = "0xF7904a295A029a3aBDFFB6F12755974a958C7C25";
-      await expect( defiBasket.makeDeposit( addr, 10000000000 )).to.be.revertedWith('Constituent does not exist');
+      await expect( this.defiBasket.makeDeposit( addr, 10000000000 )).to.be.revertedWith('Constituent does not exist');
     });
 
     it(" Should fail to make deposit because contract is not active  ", async function(){
-       await expect( defiBasket.makeDeposit( mockYfi.address, 10000000000 )).to.be.revertedWith('Constituent is not active');
+       await expect( this.defiBasket.makeDeposit( this.mockYfi.address, 10000000000 )).to.be.revertedWith('Constituent is not active');
     });
 
     it(" Should fail withdraw component because token is active or does not exist  ", async function(){
       let addr = "0xF7904a295A029a3aBDFFB6F12755974a958C7C25";
-      await expect( defiBasket.withdrawComponent( addr, 10000000000 )).to.be.revertedWith('Constituent does not exist');
+      await expect( this.defiBasket.withdrawInactive( addr, 10000000000 )).to.be.revertedWith('Constituent does not exist');
     });
 
     it(" Should fail to withdraw component because token is active or does not exist  ", async function(){
-        await expect( defiBasket.withdrawComponent( mockAave.address, 10000000000 )).to.be.revertedWith('Cannot withdraw from active constituent');
+        await expect( this.defiBasket.withdrawInactive( this.mockAave.address, 10000000000 )).to.be.revertedWith('Cannot withdraw from active constituent');
     });
     ////// start here
     it(" Should fail to get constituent address ", async function(){
-      await expect( defiBasket.getConstituentAddress(100)).to.be.revertedWith('Index exceeds array size');
+      await expect( this.defiBasket.getConstituentAddress(100)).to.be.revertedWith('Index exceeds array size');
     });
     
     it(" Should fail to getConstituentDetails constituent does not exist ", async function(){
       let addr = "0xF7904a295A029a3aBDFFB6F12755974a958C7C25";
-      await expect( defiBasket.getConstituentDetails( addr )).to.be.revertedWith('Constituent does not exist');
+      await expect( this.defiBasket.getConstituentDetails( addr )).to.be.revertedWith('Constituent does not exist');
     });
 
     it(" Should fail to get Exchange Rate constituent does not exist ", async function(){
       let addr = "0xF7904a295A029a3aBDFFB6F12755974a958C7C25";
-      await expect( defiBasket.exchangeRate( addr )).to.be.revertedWith('Constituent does not exist');
+      await expect( this.defiBasket.exchangeRate( addr )).to.be.revertedWith('Constituent does not exist');
     });
 
     it(" Should fail to get acceptingDeposit because constituent does not exist ", async function(){
       let addr = "0xF7904a295A029a3aBDFFB6F12755974a958C7C25";
-      await expect( defiBasket.acceptingDeposit( addr )).to.be.revertedWith('Constituent does not exist');
+      await expect( this.defiBasket.acceptingDeposit( addr )).to.be.revertedWith('Constituent does not exist');
     });
 
   });
@@ -245,20 +229,20 @@ describe("Kartera Token", function () {
   describe("DefiBasket make deposit functions", function () {
 
     it("Make deposit check", async function () {
-      await mockAave
+      await this.mockAave
         .connect(owner)
-        .approve(defiBasket.address, ethers.utils.parseEther("10000"));
+        .approve(this.defiBasket.address, ethers.utils.parseEther("10000"));
 
-      await defiBasket
+      await this.defiBasket
         .connect(owner)
-        .makeDeposit(mockAave.address, ethers.utils.parseEther("10000"));
+        .makeDeposit(this.mockAave.address, ethers.utils.parseEther("10000"));
 
-      let aavebalanceInBasket = await mockAave.balanceOf(defiBasket.address);
+      let aavebalanceInBasket = await this.mockAave.balanceOf(this.defiBasket.address);
       expect(aavebalanceInBasket).to.equal(ethers.utils.parseEther("10000"));
     });
 
     it(' Aave balance of basket check ', async function () {
-      let aavebalance = await mockAave.balanceOf(defiBasket.address);
+      let aavebalance = await this.mockAave.balanceOf(this.defiBasket.address);
 
       console.log('aavebalance of basket:10,000: ',  ethers.utils.formatUnits(aavebalance));
 
@@ -266,18 +250,18 @@ describe("Kartera Token", function () {
     });
 
     it(' Basket balance of investor check ', async function () {
-       let defibalance = await defiBasket.balanceOf(owner.address);
-       expect(defibalance).to.equal(ethers.utils.parseEther('10'));
+       let defibalance = await this.defiBasket.balanceOf(owner.address);
+       expect(defibalance).to.equal(ethers.utils.parseEther('100'));
     });
 
     it(' Total Deposit after deposit check ', async function () {
-       let totaldeposit = await defiBasket.totalDeposit();
-       expect(totaldeposit).to.equal("1000000000000000000000000000000");
+       let totaldeposit = await this.defiBasket.totalDeposit();
+       expect(totaldeposit).to.equal(ethers.utils.parseEther('10000'));
     });
 
     it(' Token Price Check after deposit ', async function () {
-      let tokenprice = await defiBasket.tokenPrice();
-      expect(tokenprice).to.equal("100000000000");
+      let tokenprice = await this.defiBasket.tokenPrice();
+      expect(tokenprice).to.equal(ethers.utils.parseEther('100'));
    });
 
   });
@@ -286,31 +270,21 @@ describe("Kartera Token", function () {
 
     it("Withdraw check", async function () {
 
-      await defiBasket.removeConstituent(mockAave.address);
+      await this.defiBasket.removeConstituent(this.mockAave.address);
 
       let defibaskettokens = 1;
-      await defiBasket
+      await this.defiBasket
         .connect(owner)
-        .approve(defiBasket.address, ethers.utils.parseEther("1"));
+        .approve(this.defiBasket.address, ethers.utils.parseEther("1"));
 
-      await defiBasket
+      await this.defiBasket
         .connect(owner)
-        .withdrawComponent(mockAave.address, ethers.utils.parseEther("1"));
+        .withdrawInactive(this.mockAave.address, ethers.utils.parseEther("1"));
 
-      let aavebalanceInBasket = await mockAave.balanceOf(defiBasket.address);
-      expect(aavebalanceInBasket).to.equal(ethers.utils.parseEther("9000"));
+      let aavebalanceInBasket = await this.mockAave.balanceOf(this.defiBasket.address);
+      expect(aavebalanceInBasket).to.equal(ethers.utils.parseEther("9900"));
     });
 
-  });
-  describe("Fee and factor check", async function () {
-
-    it("Fee - factor check", async function () {
-      expect( await defiBasket.getFeeFactor()).to.equal('1000');
-      // update fee factor
-      await defiBasket.updateFeeFactor('2000');
-      expect( await defiBasket.getFeeFactor()).to.equal('2000');
-
-    });
   });
 
 });
