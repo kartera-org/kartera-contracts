@@ -30,8 +30,8 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     // map of constituent address by index
     mapping (uint8 => address) internal constituentAddress;
 
-    // price oracle contract
-    KarteraPriceOracle karteraPriceOracle;
+    // price oracle contract address
+    address karteraPriceOracleAddress;
 
     // total weight 
     uint8 internal totalWeight = 0;
@@ -120,7 +120,7 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
 
     /// @notice price oracle address
     function setPriceOracleAddress(address priceoracleAddr) external onlyManagerOrOwner {
-        karteraPriceOracle = KarteraPriceOracle(priceoracleAddr);
+        karteraPriceOracleAddress = priceoracleAddr;
     }
 
     /// @notice add constituent to a basket
@@ -280,7 +280,8 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable, ERC20Burn
     }
 
     function constituentPrice(address conaddr) public view returns (uint256, uint8) {
-        (uint256 prc, uint8 decimals) = karteraPriceOracle.price(conaddr);
+        KarteraPriceOracle kpc = KarteraPriceOracle(karteraPriceOracleAddress);
+        (uint256 prc, uint8 decimals) = kpc.price(conaddr);
         return (prc, decimals);
     }
 
