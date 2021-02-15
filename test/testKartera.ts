@@ -42,8 +42,13 @@ describe("Kartera Token", function () {
 
     this.KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
     this.karteraPriceOracle = await this.KarteraPriceOracle.deploy();
+
+    this.BasketLib = await ethers.getContractFactory("BasketLib");
+    this.basketLib = await this.BasketLib.deploy(this.defiBasket.address, this.karteraPriceOracle.address);
+
+    await this.defiBasket.setBasketLib(this.basketLib.address);
     
-    await this.defiBasket.setPriceOracleAddress(this.karteraPriceOracle.address);
+    // await this.defiBasket.setPriceOracleAddress(this.karteraPriceOracle.address);
     
     
     this.MockAave = await ethers.getContractFactory("MockAave");
@@ -137,7 +142,7 @@ describe("Kartera Token", function () {
 
       await this.defiBasket.removeConstituent(this.mockYfi.address);
 
-      const numberOfCons = await this.defiBasket.numberOfAllConstituents();
+      const numberOfCons = await this.defiBasket.numberOfConstituents();
       expect(numberOfCons).to.equal(8);
     });
 
@@ -206,7 +211,8 @@ describe("Kartera Token", function () {
     });
     ////// start here
     it(" Should fail to get constituent address ", async function(){
-      await expect( this.defiBasket.getConstituentAddress(100)).to.be.revertedWith('Index exceeds array size');
+      let addr = await this.defiBasket.constituentAddress(100);
+      await expect(addr.toString() ).to.equal('0x0000000000000000000000000000000000000000');
     });
     
     it(" Should fail to getConstituentDetails constituent does not exist ", async function(){
