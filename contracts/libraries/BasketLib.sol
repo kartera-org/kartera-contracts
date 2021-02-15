@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../interfaces/IPriceOracle.sol";
 import "../interfaces/IBasket.sol";
 
-contract Basket {
+contract BasketLib {
 
     address public karteraPriceOracleAddress;
     address basketAddress;
@@ -27,7 +27,7 @@ contract Basket {
         karteraPriceOracle = IPriceOracle(kpoaddress);
     }
 
-    function totalDepositInt() internal view returns(uint256) {
+    function totalDepositInt() internal view virtual returns(uint256) {
         
         uint256 totaldeposit = 0;
         for(uint8 i = 0; i < basket.numberOfConstituents(); i++) {
@@ -40,7 +40,7 @@ contract Basket {
         return totaldeposit;
     }
 
-    function totalDepositAfter(address conaddr, uint256 numberOfTokens) internal view returns(uint256) {
+    function totalDepositAfter(address conaddr, uint256 numberOfTokens) internal view virtual returns(uint256) {
         
         uint256 totaldeposit = 0;
         for(uint8 i = 0; i < basket.numberOfConstituents(); i++) {
@@ -59,7 +59,7 @@ contract Basket {
         return totaldeposit;
     }
 
-    function basketPriceInt() internal view returns (uint256) {
+    function basketPriceInt() internal view virtual returns (uint256) {
 
         uint256 totaldeposit = totalDepositInt();
         if (totaldeposit > 0) {
@@ -70,7 +70,7 @@ contract Basket {
         return SafeMath.mul(basket.initialBasketValue(), power(10, basket.decimals()));
     }
 
-    function exchangeRate(address conaddr) external view returns (uint256) {
+    function exchangeRate(address conaddr) external view virtual returns (uint256) {
         require(basket.getConstituentAddress(conaddr) == conaddr, 'Constituent does not exist');
         (uint prc, uint8 decs) = getPriceInt(conaddr);
         uint256 amount = SafeMath.mul(prc, power(10, basket.decimals()));
@@ -80,7 +80,7 @@ contract Basket {
     }
 
     /// @notice # of basket tokens for deposit $ amount 
-    function tokensForDepositInt(uint amount) internal view returns (uint256) {
+    function tokensForDepositInt(uint amount) internal view virtual returns (uint256) {
         uint256 x = SafeMath.mul(amount, power(10, basket.decimals()));
         x = SafeMath.div(x, basketPriceInt());
         return x;
@@ -96,14 +96,14 @@ contract Basket {
     }
 
     /// @notice number of inactive constituent tokens for dollar amount 
-    function depositsForDollar(address conaddr, uint256 dollaramount) external view returns (uint256) {
+    function depositsForDollar(address conaddr, uint256 dollaramount) external view virtual returns (uint256) {
         (uint prc, uint8 decs) = getPriceInt(conaddr);
         uint256 x = SafeMath.mul(dollaramount, power(10, decs));
         x = SafeMath.div(x, prc);
         return x;
     }
 
-    function constituentWithdrawCost(uint256 numberoftokens) external view returns (uint256){
+    function constituentWithdrawCost(uint256 numberoftokens) external view virtual returns (uint256){
         uint256 tokenprice = basketPriceInt();
         uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice);
         uint256 withdrawcost = withdrawCostInt(SafeMath.div(dollaramount, power(10, basket.decimals())));
@@ -111,27 +111,7 @@ contract Basket {
         return withdrawcost;
     }
 
-    function acceptingDepositTest(address conaddr) external view returns (uint256) {
-        require(basket.getConstituentAddress(conaddr) == conaddr, 'Constituent does not exist');
-        uint256 currentweight = 0;
-        uint256 totaldeposit = totalDepositInt();
-        if (totaldeposit > basket.depositThreshold()){
-            (uint256 prc, uint8 decs) = getPriceInt(conaddr);
-            currentweight = SafeMath.mul(100, basket.getConstituentDeposit(conaddr));
-            currentweight = SafeMath.mul(currentweight, prc);
-            currentweight = SafeMath.div(currentweight, totaldeposit);
-            currentweight = SafeMath.div(currentweight, power(10, decs));
-            return currentweight;
-        }else{
-            return 0;
-        }
-        if (uint8(currentweight) < basket.getConstituentWeight(conaddr) + basket.getConstituentWeightTol(conaddr)) {
-            return 0;
-        }
-        return 1;
-    }
-
-    function acceptingDeposit(address conaddr) external view returns (bool) {
+    function acceptingDeposit(address conaddr) external view virtual returns (bool) {
         require(basket.getConstituentAddress(conaddr) == conaddr, 'Constituent does not exist');
         uint256 currentweight = 0;
         uint256 totaldeposit = totalDepositInt();
@@ -150,7 +130,7 @@ contract Basket {
         return false;
     }
 
-    function acceptingActualDeposit(address conaddr, uint256 numberOfTokens) external view returns (bool) {
+    function acceptingActualDeposit(address conaddr, uint256 numberOfTokens) external view virtual returns (bool) {
         require(basket.getConstituentAddress(conaddr) == conaddr, 'Constituent does not exist');
         uint256 currentweight = 0;
         uint256 totaldeposit = totalDepositAfter(conaddr, numberOfTokens);
@@ -170,7 +150,7 @@ contract Basket {
     }
 
 
-    function depositIncentive(uint256 dollaramount) external view returns (uint256) {
+    function depositIncentive(uint256 dollaramount) external view virtual returns (uint256) {
         if(basket.governanceToken() == address(0)){
             return 0;
         }
@@ -184,7 +164,7 @@ contract Basket {
         }
     }
 
-    function withdrawIncentive(uint256 dollaramount) external view returns (uint256) {
+    function withdrawIncentive(uint256 dollaramount) external view virtual returns (uint256) {
 
         if(basket.governanceToken() == address(0)){
             return 0;
@@ -199,34 +179,34 @@ contract Basket {
         }
     }
 
-    function withdrawCostInt(uint256 longdollaramount) internal view returns (uint256) {
+    function withdrawCostInt(uint256 longdollaramount) internal view virtual returns (uint256) {
         require(basket.governanceToken() != address(0), 'cannot withdraw');
         uint256 d = SafeMath.mul(basket.withdrawCostMultiplier(), longdollaramount);
         return d;
     }
 
-    function withdrawCost(uint256 longdollaramount) external view returns (uint256) {
+    function withdrawCost(uint256 longdollaramount) external view virtual returns (uint256) {
         return withdrawCostInt(longdollaramount);
     }
 
-    function getPriceInt(address conaddr) internal view returns (uint256, uint8) {
+    function getPriceInt(address conaddr) internal view virtual returns (uint256, uint8) {
         (uint256 prc, uint8 decimals) = karteraPriceOracle.price(conaddr);
         return (prc, decimals);
     }
 
-    function basketPrice() external view returns (uint256) {
+    function basketPrice() external view virtual returns (uint256) {
         return basketPriceInt();
     }
  
-    function getPrice(address conaddr) external view returns (uint256, uint8) {
+    function getPrice(address conaddr) external view virtual returns (uint256, uint8) {
         return getPriceInt(conaddr);
     }
 
-    function totalDeposit() external view returns(uint256) {
+    function totalDeposit() external view virtual returns(uint256) {
         return totalDepositInt();
     }
 
-    function tokensForDeposit(uint amount) external view returns (uint256) {
+    function tokensForDeposit(uint amount) external view virtual returns (uint256) {
         return tokensForDepositInt(amount);
     }
 
