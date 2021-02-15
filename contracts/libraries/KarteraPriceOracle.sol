@@ -22,13 +22,13 @@ contract KarteraPriceOracle {
        owner = msg.sender;
     }
 
-    function addToken(address tokenaddress, uint8 len, address[] calldata claddress) external {
+    function addToken(address tokenaddress, uint8 len, address[] calldata claddress) external virtual {
         require(msg.sender == owner, 'Only owner can add new tokens');
         tokenCLMap[tokenaddress].addrLink = claddress;
         tokenCLMap[tokenaddress].length = len;
     }
 
-    function price(address tknaddress) view public returns (uint256, uint8) {
+    function price(address tknaddress) external view virtual returns (uint256, uint8) {
         uint256 prc = 1;
         uint8 decimals = 0;
         for(uint8 i=0; i<tokenCLMap[tknaddress].length; i++){
@@ -39,8 +39,8 @@ contract KarteraPriceOracle {
         return (prc, decimals);
     }
 
-    function clPrice(address addr) public view returns (int, uint8) {
-        // return (1000000000000000000, 18); //for localhost testing
+    function clPrice(address addr) public view virtual returns (int, uint8) {
+        return (1000000000000000000, 18); //for localhost testing
         AggregatorV3Interface priceFeed = AggregatorV3Interface(addr);
         (
             uint80 roundID, 

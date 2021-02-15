@@ -1,5 +1,6 @@
 import { solidity } from "ethereum-waffle";
 const { expectRevert, time } = require('@openzeppelin/test-helpers');
+import { Basket__factory, Basket } from "../typechain";
 // import { DefiBasket__factory, DefiBasket, MockAave } from "../typechain";
 // import { KarteraToken__factory, KarteraToken } from "../typechain";
 // import { MockAave__factory, MockAave } from "../typechain";
@@ -17,25 +18,45 @@ describe("DefiBasket functions", function () {
 
         this.KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
         this.karteraPriceOracle = await this.KarteraPriceOracle.deploy()
+        await this.karteraPriceOracle.deployed();
+
+        this.KarteraPriceOracle2 = await ethers.getContractFactory("KarteraPriceOracle2");
+        this.karteraPriceOracle2 = await this.KarteraPriceOracle2.deploy()
+        await this.karteraPriceOracle2.deployed();
 
         // Get the ContractFactory and Signers here.
         this.DefiBasket = await ethers.getContractFactory("DefiBasket");
         this.defiBasket = await this.DefiBasket.deploy();
-        await this.defiBasket.setPriceOracleAddress(this.karteraPriceOracle.address);
+        await this.defiBasket.deployed();
+
+        this.Basket = await ethers.getContractFactory("Basket") as Basket__factory;
+        this.basket = await this.Basket.deploy(this.defiBasket.address, this.karteraPriceOracle.address);
+        await this.basket.deployed();
+
+        await this.defiBasket.setBasketLib(this.basket.address);
+        // await this.defiBasket.setPriceOracleAddress(this.karteraPriceOracle.address);
 
         this.KarteraToken = (await ethers.getContractFactory("KarteraToken"));
         this.kartera = await this.KarteraToken.deploy();
+        await this.kartera.deployed();
+
         this.kartera.mint(this.defiBasket.address, ethers.utils.parseEther('1000000000'));
 
         this.MockAave = (await ethers.getContractFactory("MockAave"));
         this.mockAave = await this.MockAave.deploy();
+        await this.mockAave.deployed();
         this.MockMkr = (await ethers.getContractFactory("MockMkr"));
         this.mockMkr = await this.MockMkr.deploy();
+        await this.mockMkr.deployed();
 
         let link = ['0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad', etherCLAddr];
         await this.karteraPriceOracle.addToken(this.mockAave.address, 2, link);
         link = ['0x0B156192e04bAD92B6C1C13cf8739d14D78D5701', etherCLAddr];
         await this.karteraPriceOracle.addToken(this.mockMkr.address, 2, link);
+
+        // test new KPO2
+        await this.karteraPriceOracle2.addToken(this.mockAave.address, 2, link);
+        await this.karteraPriceOracle2.addToken(this.mockMkr.address, 2, link);
     });
 
     it("DefiBasket name check", async function () {
@@ -47,8 +68,8 @@ describe("DefiBasket functions", function () {
 
       await this.defiBasket.transferManager(this.bob.address)
 
-      await this.defiBasket.connect(this.bob).addConstituent(this.mockAave.address, 20, 30);
-      await this.defiBasket.connect(this.bob).addConstituent(this.mockMkr.address, 20, 30);
+      await this.defiBasket.connect(this.bob).addConstituent(this.mockAave.address, 50, 5);
+      await this.defiBasket.connect(this.bob).addConstituent(this.mockMkr.address, 50, 5);
     });
 
     it("DefiBasket kartera balance check", async function () {
@@ -69,7 +90,7 @@ describe("DefiBasket functions", function () {
 
       await this.defiBasket.setGovernanceToken(this.kartera.address, ethers.utils.parseEther('0.5'));
 
-      expect(await this.defiBasket.incentive('10')).to.equal(ethers.utils.parseEther('5'));
+      expect(await this.defiBasket.depositIncentive('10')).to.equal(ethers.utils.parseEther('5'));
     });
 
     it("DefiBasket make deposit check", async function () {
@@ -116,86 +137,98 @@ describe("DefiBasket functions", function () {
     })
 
     it('get constituent details', async function (){
-      let addr = await this.defiBasket.getConstituentAddress(0);
+      let addr = await this.defiBasket.constituentAddress(0);
       let details = await this.defiBasket.getConstituentDetails(addr)
       expect(details[0].toString()).to.equal(this.mockAave.address);
     })
 
     it('change constituent weights', async function () {
       
+      let res = await this.basket.acceptingDepositTest(this.mockAave.address);
+      console.log('res: ', res.toString() );
       // change mockaave weight tol to 0
       // await this.defiBasket.updateConstituent(this.mockAave.address, 20, 0);
-      expect(await this.defiBasket.acceptingDeposit(this.mockAave.address)).to.equal(false);
-      await this.defiBasket.updateConstituent(this.mockAave.address, 20, 100);
-      expect(await this.defiBasket.acceptingDeposit(this.mockAave.address)).to.equal(true);
+      // expect(await this.defiBasket.acceptingDeposit(this.mockAave.address)).to.equal(false);
+      // await this.defiBasket.updateConstituent(this.mockAave.address, 20, 100);
+      // expect(await this.defiBasket.acceptingDeposit(this.mockAave.address)).to.equal(true);
 
     })
 
-    it('set withdraw incentive check', async function () {
-      await this.defiBasket.setWithdrawIncentiveMultiplier(ethers.utils.parseEther('10'));
+    // it('set withdraw incentive check', async function () {
+    //   await this.defiBasket.setWithdrawIncentiveMultiplier(ethers.utils.parseEther('10'));
 
-      expect(await this.defiBasket.withdrawIncentive('1')).to.equal(ethers.utils.parseEther('10'));
+    //   expect(await this.defiBasket.withdrawIncentive('1')).to.equal(ethers.utils.parseEther('10'));
 
-      await this.defiBasket.removeConstituent(this.mockMkr.address);
+    //   await this.defiBasket.removeConstituent(this.mockMkr.address);
 
-      await this.defiBasket
-        .connect(this.alice)
-        .approve(this.defiBasket.address, ethers.utils.parseEther("100"));
+    //   await this.defiBasket
+    //     .connect(this.alice)
+    //     .approve(this.defiBasket.address, ethers.utils.parseEther("100"));
 
-      await this.defiBasket.withdrawInactive(this.mockMkr.address, ethers.utils.parseEther('100'));
+    //   await this.defiBasket.withdrawInactive(this.mockMkr.address, ethers.utils.parseEther('100'));
 
-      let mkrbal = await this.mockMkr.balanceOf(this.defiBasket.address);
-      console.log('mkrbal: ', ethers.utils.formatUnits(mkrbal) );
+    //   let mkrbal = await this.mockMkr.balanceOf(this.defiBasket.address);
+    //   console.log('mkrbal: ', ethers.utils.formatUnits(mkrbal) );
 
-      expect( await this.kartera.balanceOf(this.alice.address)).to.equal(ethers.utils.parseEther('1100000'));
-    });
+    //   expect( await this.kartera.balanceOf(this.alice.address)).to.equal(ethers.utils.parseEther('1100000'));
+    // });
 
-    it('number of constituents check', async function () {
-      expect( await this.defiBasket.numberOfActiveConstituents()).to.equal('1');
-      await expectRevert(this.defiBasket.addConstituent(this.mockMkr.address, 20, 5), 'Constituent already exists')
-      await this.defiBasket.activateConstituent(this.mockMkr.address);
-      expect( await this.defiBasket.numberOfActiveConstituents()).to.equal('2');
+    // it('number of constituents check', async function () {
+    //   expect( await this.defiBasket.numberOfActiveConstituents()).to.equal(1);
+    //   await expectRevert(this.defiBasket.addConstituent(this.mockMkr.address, 20, 5), 'Constituent already exists')
+    //   await this.defiBasket.activateConstituent(this.mockMkr.address);
+    //   expect( await this.defiBasket.numberOfActiveConstituents()).to.equal(2);
 
-    });
+    // });
 
-    it('check active constituent withdraw', async function () {
+    // it('check active constituent withdraw', async function () {
 
-      await this.defiBasket.setWithdrawCostMultiplier(ethers.utils.parseEther('100'));
+    //   await this.defiBasket.setWithdrawCostMultiplier(ethers.utils.parseEther('100'));
 
-      let withdrawcost = await this.defiBasket.constituentWithdrawCost(ethers.utils.parseEther('1'));
+    //   let withdrawcost = await this.defiBasket.constituentWithdrawCost(ethers.utils.parseEther('1'));
 
-      expect(withdrawcost).to.equal(ethers.utils.parseEther('10000'));
+    //   expect(withdrawcost).to.equal(ethers.utils.parseEther('10000'));
 
-      let alicekartbal = await this.kartera.balanceOf(this.alice.address);
-      console.log('alicekart : ', ethers.utils.formatUnits(alicekartbal) );
+    //   let alicekartbal = await this.kartera.balanceOf(this.alice.address);
+    //   console.log('alicekart : ', ethers.utils.formatUnits(alicekartbal) );
 
-      let alicedefibal = await this.defiBasket.balanceOf(this.alice.address);
-      console.log('alicedefibal : ', ethers.utils.formatUnits(alicedefibal) );
+    //   let alicedefibal = await this.defiBasket.balanceOf(this.alice.address);
+    //   console.log('alicedefibal : ', ethers.utils.formatUnits(alicedefibal) );
 
-      let aliceMkrbal = await this.mockMkr.balanceOf(this.alice.address);
-      console.log('aliceMkrbal : ', ethers.utils.formatUnits(aliceMkrbal) );
+    //   let aliceMkrbal = await this.mockMkr.balanceOf(this.alice.address);
+    //   console.log('aliceMkrbal : ', ethers.utils.formatUnits(aliceMkrbal) );
 
-      let defiMkrBal = await this.mockMkr.balanceOf(this.defiBasket.address);
-      console.log('defiMkrBal: ', ethers.utils.formatUnits(defiMkrBal) );
+    //   let defiMkrBal = await this.mockMkr.balanceOf(this.defiBasket.address);
+    //   console.log('defiMkrBal: ', ethers.utils.formatUnits(defiMkrBal) );
 
-      await this.kartera.connect(this.alice).approve(this.defiBasket.address, ethers.utils.parseEther('10000'));
+    //   await this.kartera.connect(this.alice).approve(this.defiBasket.address, ethers.utils.parseEther('10000'));
 
-      await this.defiBasket.connect(this.alice).approve(this.defiBasket.address, ethers.utils.parseEther('1'));
+    //   await this.defiBasket.connect(this.alice).approve(this.defiBasket.address, ethers.utils.parseEther('1'));
 
-      await this.defiBasket.withdrawActive(this.mockMkr.address, ethers.utils.parseEther('1'));
-      alicekartbal = await this.kartera.balanceOf(this.alice.address);
-      console.log('alicekart : ', ethers.utils.formatUnits(alicekartbal) );
+    //   await this.defiBasket.withdrawActive(this.mockMkr.address, ethers.utils.parseEther('1'));
+    //   alicekartbal = await this.kartera.balanceOf(this.alice.address);
+    //   console.log('alicekart : ', ethers.utils.formatUnits(alicekartbal) );
 
-      alicedefibal = await this.defiBasket.balanceOf(this.alice.address);
-      console.log('alicedefibal : ', ethers.utils.formatUnits(alicedefibal) );
+    //   alicedefibal = await this.defiBasket.balanceOf(this.alice.address);
+    //   console.log('alicedefibal : ', ethers.utils.formatUnits(alicedefibal) );
 
-      aliceMkrbal = await this.mockMkr.balanceOf(this.alice.address);
-      console.log('aliceMkrbal : ', ethers.utils.formatUnits(aliceMkrbal) );
+    //   aliceMkrbal = await this.mockMkr.balanceOf(this.alice.address);
+    //   console.log('aliceMkrbal : ', ethers.utils.formatUnits(aliceMkrbal) );
 
 
-    })
+    // })
 
-    it('governance token address check', async function () {
-      expect(await this.defiBasket.getGovernanceTokenAddress()).to.equal(this.kartera.address);
-    })
+    // it('governance token address check', async function () {
+    //   expect(await this.defiBasket.governanceToken()).to.equal(this.kartera.address);
+    // })
+
+    // it('new price oracle check', async function (){
+
+    //   let prc = await this.basket.getPrice(this.mockAave.address);
+    //   console.log('prc: ', prc.toString() );
+
+    //   await this.basket.setPriceOracle(this.karteraPriceOracle2.address);
+    //   prc = await this.basket.getPrice(this.mockAave.address);
+    //   console.log('prc: ', prc.toString() );
+    // })  
 });
