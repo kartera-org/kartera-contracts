@@ -8,6 +8,7 @@ let defiBasket:any;
 let karteraPriceOracle:any;
 let gov:any;
 let timelock:any;
+let basketLib:any;
 // let karteraaddress = "0x1d10450D4cfA9241EaB34Ee7E6b77956E29E6794";
 // let defiBasketaddress = '0x690ec9bC4D843002Cb8c12D0F940e415BefDE3F2';
 // let karteraPriceOracleAddr = '0x011A0C72433D230575Ed12bD316D4Be3359C86A4';
@@ -38,9 +39,31 @@ let constituents = [
 async function main() {
 
   const [alice, bob, carol] = await ethers.getSigners();
-  await loadContracts('kovan');
 
-  console.log('timelock addr: ', timelock.address );
+  await loadContracts('kovan');
+  // let bal = await karteraToken.balanceOf(defiBasket.address);
+  // let bal = await defiBasket.constituentPrice();
+  // console.log('bal: ', ethers.utils.formatUnits(bal) );
+
+  //////////////////////////////////////////////
+  //////////////////////////////////////////////
+  // await deployDefiBasket();
+  // await deployBasketLib(defiBasket.address, karteraPriceOracle.address)
+  // console.log('done basket lib deploy: ',  );
+  // await defiBasket.setBasketLib(basketLib.address);
+  // console.log('done setting lib to defibasket: ',  );
+
+  // await defiBasket.transferOwnership(timelock.address);
+  // console.log('transfering ownership of defibasket to timelock done: ',  );
+  // for(let i=0; i<constituents.length; i++){
+  //   await defiBasket.addConstituent(constituents[i].addr, constituents[i].weight, constituents[i].weightTol);
+  //   console.log('done: ', i );
+  // }
+  //////////////////////////////////////////////
+  //////////////////////////////////////////////
+
+  // console.log('timelock addr: ', timelock.address );
+
 
   
   // await timelock.setPendingAdmin(gov.address);
@@ -59,7 +82,7 @@ async function main() {
 
   // decodeGovTX(proposalTX.data);
   
-  let proposalid = '3';
+  // let proposalid = '3';
 
   // await karteraToken.delegate(alice.address);
 
@@ -70,8 +93,8 @@ async function main() {
   // let state = await gov.state(proposalid);
   // console.log('proposal state: ', state );
 
-  await gov.queue(proposalid);
-  let tx = await gov.execute(proposalid);
+  // await gov.queue(proposalid);
+  // let tx = await gov.execute(proposalid);
 
   // let receipt = await gov.getReceipt(proposalid, alice.address);
   // console.log('receipt: ', receipt.toString() );
@@ -385,8 +408,8 @@ async function loadContracts(network:string) {
   const Timelock = await ethers.getContractFactory("Timelock");
   timelock = await Timelock.attach(timelockAddress);
 
-  // const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
-  // karteraPriceOracle = await KarteraPriceOracle.attach(karteraPriceOracleAddress);
+  const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
+  karteraPriceOracle = await KarteraPriceOracle.attach(karteraPriceOracleAddress);
 }
 
 async function deployKarteraToken(){
@@ -398,16 +421,24 @@ async function deployKarteraToken(){
   console.log('transaction id: ', karteraToken.deployTransaction.hash);
   await karteraToken.deployed();
 }
+
+async function deployBasketLib(defiBasketAddr:string, kpoAddr:string) {
+  const BasketLib = await ethers.getContractFactory("BasketLib");
+  basketLib = await BasketLib.deploy(defiBasketAddr, kpoAddr);
+  await basketLib.deployed();
+  console.log('basketLib address: ', basketLib.address );
+}
+
 async function deployDefiBasket(){
 
-  // // deploy defiBasket Contract
+  // deploy defiBasket Contract
   // const DefiBasket = await ethers.getContractFactory("DefiBasket");
   // let defiBasket = await DefiBasket.deploy();
   // console.log('defiBasket contract id: ', defiBasket.address);
   // console.log('transaction id: ', defiBasket.deployTransaction.hash);
   // await defiBasket.deployed();
 
-  // await defiBasket.setPriceOracleAddress(karteraPriceOracleAddr);
+  // console.log('done 1: ',  );
 
   // let i=4;
   // await defiBasket.addConstituent(constituents[i].addr, constituents[i].weight, constituents[i].weightTol);
@@ -415,16 +446,17 @@ async function deployDefiBasket(){
 
   // let fundBasket = 5e7;
   // await karteraToken.mint(defiBasket.address, ethers.utils.parseEther(fundBasket.toString()))
+  // console.log('done 2: ',  );
 
-  // let multiplier = 100;
-  // await defiBasket.setGovernanceToken(karteraToken.address, ethers.utils.parseEther(multiplier.toString()))
+  let multiplier = 100;
+  await defiBasket.setGovernanceToken(karteraToken.address, ethers.utils.parseEther(multiplier.toString()))
 
-  // let withdrawmultiplier = 100;
-  // await defiBasket.setWithdrawIncentiveMultiplier(ethers.utils.parseEther(withdrawmultiplier.toString()));
+  console.log('done 3: ',  );
 
-  let withdrawActivemultiplier = 1;
+  let withdrawActivemultiplier = 1000;
   console.log('setting active withdraw cost: ',  );
   await defiBasket.setWithdrawCostMultiplier(ethers.utils.parseEther(withdrawActivemultiplier.toString()));
+  console.log('done 4: ',  );
 
 }
 

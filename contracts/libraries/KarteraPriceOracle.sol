@@ -40,7 +40,7 @@ contract KarteraPriceOracle {
     }
 
     function clPrice(address addr) public view virtual returns (int, uint8) {
-        // return (1000000000000000000, 18); //for localhost testing
+        return (1000000000000000000, 18); //for localhost testing
         AggregatorV3Interface priceFeed = AggregatorV3Interface(addr);
         (
             uint80 roundID, 

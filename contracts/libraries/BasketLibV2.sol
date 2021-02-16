@@ -11,7 +11,7 @@ import "../interfaces/IPriceOracle.sol";
 import "../interfaces/IBasketLib.sol";
 
 /// @title DefiBasket 
-contract BasketLib {
+contract BasketLibV2 {
 
     // address of manager of the library 
     address public manager;
@@ -478,12 +478,12 @@ contract BasketLib {
 
     function copyState(address oldcontainer) public {
         require(msg.sender==manager, "Sender not manager" );
-        IBasketLib basketInterface = IBasketLib(oldcontainer);
-        uint16 n = basketInterface.numberOfConstituents();
+        IBasketLib basketContainer = IBasketLib(oldcontainer);
+        uint16 n = basketContainer.numberOfConstituents();
         for(uint16 i=0; i<n; i++){
-            address conaddr = basketInterface.constituentAddress(i);
+            address conaddr = basketContainer.constituentAddress(i);
             constituentAddress[i] = conaddr;
-            (address conaddr_, uint8 weight, uint8 weighttol, bool active, uint256 td, uint8 decimals) = basketInterface.getConstituentDetails(conaddr);
+            (address conaddr_, uint8 weight, uint8 weighttol, bool active, uint256 td, uint8 decimals) = basketContainer.getConstituentDetails(conaddr);
             constituents[conaddr].constituentAddress = conaddr_;
             constituents[conaddr].weight = weight;
             constituents[conaddr].weightTolerance = weighttol;
@@ -491,6 +491,10 @@ contract BasketLib {
             constituents[conaddr].active = active;
             constituents[conaddr].totalDeposit = td;
             constituents[conaddr].decimals = decimals;
+            numberOfConstituents++;
+            if(active){
+                numberOfActiveConstituents++;
+            }
         }
 
     }
