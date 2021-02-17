@@ -2,6 +2,7 @@ import { ethers } from "hardhat";
 import { GovernorAlpha, KarteraToken } from "../typechain";
 const { expectRevert, time } = require('@openzeppelin/test-helpers');
 import * as fs from 'fs';
+import * as path from 'path';
 
 let karteraToken:any;
 let defiBasket:any;
@@ -274,8 +275,7 @@ async function deployOnKovan(){
 
   let BasketLib = await ethers.getContractFactory("BasketLib");
 
-  await BasketLib.deploy(defiBasket.address, karteraPriceOracleAddress, karteraAddress);
-  basketLib = await BasketLib.deploy();
+  basketLib = await BasketLib.deploy(defiBasket.address, karteraPriceOracleAddress, karteraAddress);
 
   console.log('basketLib address: ', basketLib.address);
 
@@ -426,7 +426,7 @@ async function sendMockTokens(tokenaddr:string, signer:any, to:string, amount:st
 
 function getContractAddress(chain:string, contract:string): any {
   try{
-    let data = fs.readFileSync('/mnt/data/projects/kartera-private/scripts/contractAddresses.txt', 'utf8');
+    let data = fs.readFileSync(path.resolve(__dirname, '/contractAddresses.txt'), 'utf8');
     let lines = data.split('##')
     for(let i=0; i<lines.length; i++){
       if(lines[i].includes(chain)){
