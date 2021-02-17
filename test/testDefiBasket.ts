@@ -101,6 +101,10 @@ describe("DefiBasket functions", function () {
         .connect(this.alice)
         .approve(this.defiBasket.address, ethers.utils.parseEther("1000000"));
 
+      await expectRevert(this.defiBasket.connect(this.alice).makeDeposit(this.mockAave.address, ethers.utils.parseEther('1000000')), 'Contract is paused');
+
+      await this.defiBasket.unpause();
+
       await this.defiBasket.connect(this.alice).makeDeposit(this.mockAave.address, ethers.utils.parseEther('1000000'));
 
       expect(await this.mockAave.balanceOf(this.defiBasket.address)).to.equal(ethers.utils.parseEther('1000000'));
@@ -246,7 +250,7 @@ describe("DefiBasket functions", function () {
         .connect(this.alice)
         .approve(this.defiBasket.address, ethers.utils.parseEther("1000000"));
 
-        await  expectRevert( this.defiBasket.connect(this.alice).makeDeposit(this.mockMkr.address, ethers.utils.parseEther('1000000')), 'Contract is paused for upgrade');
+        await  expectRevert( this.defiBasket.connect(this.alice).makeDeposit(this.mockMkr.address, ethers.utils.parseEther('1000000')), 'Contract is paused');
 
         await this.defiBasket.unpause();
 
@@ -257,6 +261,15 @@ describe("DefiBasket functions", function () {
 
         mockmkrbal = await this.mockMkr.balanceOf(this.defiBasket.address);
         console.log('mockmkrbal after 1000 deposit: ', ethers.utils.formatUnits(mockmkrbal) );
+    })
+
+    it('updateDepositThreshold check', async function (){
+      let depositTh = await this.defiBasket.depositThreshold();
+      console.log('deposit th : ', depositTh.toString() );
+      await this.defiBasket.updateDepositThreshold(ethers.utils.parseEther('1000'));
+
+      depositTh = await this.defiBasket.depositThreshold();
+      console.log('deposit th : ', depositTh.toString() );
 
     })
 });

@@ -26,7 +26,7 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable {
     address public governanceToken;
 
     /// @notice pause deposit withdraw if library interface is changing
-    bool public pause_ = false;
+    bool public pause_ = true;
 
     /// @notice contract constructor make sender the manger and sets governance token to zero address
     constructor() public {
@@ -45,6 +45,7 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable {
     }
 
     function setBasketLib(address basketLibAddr) external onlyManagerOrOwner {
+        require(pause_, 'Contract is not paused');
         basketLibAddress = basketLibAddr;
         basketLib = IBasketLib(basketLibAddr);
     }
@@ -118,7 +119,7 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable {
 
     /// @notice external call to depoit tokens to basket and receive equivalent basket tokens
     function makeDeposit(address conaddr, uint256 numberoftokens) external payable {
-        require(!pause_, 'Contract is paused for upgrade');
+        require(!pause_, 'Contract is paused');
 
         (uint256 minttokens, uint256 incentiveOffered) = basketLib.makeDepositCheck(conaddr, numberoftokens);
         ERC20 token = ERC20(conaddr);
@@ -134,7 +135,7 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable {
 
     /// @notice exchange basket tokens for removed constituent tokens
     function withdrawInactive(address conaddr, uint256 numberoftokens) external payable {
-        require(!pause_, 'Contract is paused for upgrade');
+        require(!pause_, 'Contract is paused');
 
         (uint256 tokensredeemed, uint256 incentiveOffered) = basketLib.withdrawInactiveCheck(conaddr, numberoftokens);
 
@@ -151,8 +152,8 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable {
 
     /// @notice exchange basket tokens for active constituent tokens
     function withdrawActive(address conaddr, uint256 numberoftokens) external payable {
-        require(!pause_, 'Contract is paused for upgrade');
-        
+        require(!pause_, 'Contract is paused');
+
         (uint256 tokensredeemed, uint256 withdrawcost) = basketLib.withdrawActiveCheck(conaddr, numberoftokens);
 
         ERC20 token = ERC20(conaddr);
@@ -161,6 +162,11 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable {
         ERC20 tkn = ERC20(governanceToken);
         tkn.transferFrom(msg.sender, address(this), withdrawcost);
         _burn(msg.sender, numberoftokens);
+    }
+
+    /// @notice get deposit threshold
+    function depositThreshold() external view returns (uint256) {
+        return basketLib.depositThreshold();
     }
     
     /// @notice update deposit threshold

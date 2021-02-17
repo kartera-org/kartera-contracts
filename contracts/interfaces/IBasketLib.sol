@@ -63,6 +63,9 @@ interface IBasketLib {
     /// @notice update substract constituent deposit value after withdraw
     function SubDeposit(address conaddr, uint256 numberoftokens) external;
     
+    /// @notice get deposit threshold
+    function depositThreshold() external view returns (uint256);
+
     /// @notice update deposit threshold
     function updateDepositThreshold(uint256 depositthreshold) external;
 
