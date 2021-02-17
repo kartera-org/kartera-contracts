@@ -40,7 +40,9 @@ async function main() {
 
   const [alice, bob, carol] = await ethers.getSigners();
 
-  await loadContracts('kovan');
+  await deployOnKovan();
+
+  // await loadContracts('kovan');
   // let bal = await karteraToken.balanceOf(defiBasket.address);
   // let bal = await defiBasket.constituentPrice();
   // console.log('bal: ', ethers.utils.formatUnits(bal) );
@@ -252,6 +254,51 @@ async function main() {
   console.log('done...');
 
 }
+
+async function deployOnKovan(){
+  ///////////////////////// address of previously deployed contracts /////////////////////////////////////
+
+  let karteraAddress= 0x1d10450D4cfA9241EaB34Ee7E6b77956E29E6794
+  let karteraPriceOracleAddress= 0x011A0C72433D230575Ed12bD316D4Be3359C86A4
+  let govAddress= 0x03c1a459113790247deab13edd2c73cf05d9e002
+  let timelockAddress= 0xd1631e9ad08726a6b67d1495034324b831643c06
+
+  /////////////////////////////////////////////// deploy below //////////////////////////////////
+
+  let DefiBasket = await ethers.getContractFactory("DefiBasket");
+  defiBasket = await DefiBasket.deploy();
+
+  await defiBasket.deployed()
+
+  console.log('defibasket address: ', defiBasket.address);
+
+  let BasketLib = await ethers.getContractFactory("BasketLib");
+
+  await BasketLib.deploy(defiBasket.address, karteraPriceOracleAddress, karteraAddress);
+  basketLib = await BasketLib.deploy();
+
+  console.log('basketLib address: ', basketLib.address);
+
+  await basketLib.deployed();
+
+  await basketLib.transferManager(defiBasket.address);
+  await defiBasket.setBasketLib(basketLib.address);
+
+  defiBasket.setGovernanceToken(karteraToken.address, ethers.utils.parseEther('100'));
+
+  defiBasket.setWithdrawCost(ethers.utils.parseEther('1000'));
+
+  defiBasket.transferOwnership( timelockAddress);
+
+
+  for(let i=0; i<5; i++){
+    await defiBasket.addConstituent(constituents[i].addr, constituents[i].weight, constituents[i].weightTol);
+    console.log('done: ', i );
+  }
+
+  await defiBasket.unpause()
+}
+
 
 function encodeParameters(types:any, values:any) {
   const abi = new ethers.utils.AbiCoder();
