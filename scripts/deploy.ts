@@ -282,13 +282,19 @@ async function deployOnKovan(){
   await basketLib.deployed();
 
   await basketLib.transferManager(defiBasket.address);
+  console.log('basketLib.transferManager');
+
   await defiBasket.setBasketLib(basketLib.address);
+  console.log('defiBasket.setBasketLib');
 
   defiBasket.setGovernanceToken(karteraToken.address, ethers.utils.parseEther('100'));
+  console.log('defiBasket.setGovernanceToken');
 
   defiBasket.setWithdrawCost(ethers.utils.parseEther('1000'));
+  console.log('defiBasket.setWithdrawCost');
 
   defiBasket.transferOwnership( timelockAddress);
+  console.log('defiBasket.transferOwnership');
 
 
   for(let i=0; i<5; i++){
@@ -297,6 +303,9 @@ async function deployOnKovan(){
   }
 
   await defiBasket.unpause()
+  console.log('defiBasket.unpause');
+
+  
 }
 
 
