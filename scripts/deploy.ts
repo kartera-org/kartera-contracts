@@ -40,9 +40,9 @@ async function main() {
 
   const [alice, bob, carol] = await ethers.getSigners();
 
+  await loadContracts('kovan');
   await deployOnKovan();
 
-  // await loadContracts('kovan');
   // let bal = await karteraToken.balanceOf(defiBasket.address);
   // let bal = await defiBasket.constituentPrice();
   // console.log('bal: ', ethers.utils.formatUnits(bal) );
@@ -302,8 +302,11 @@ async function deployOnKovan(){
     console.log('done: ', i );
   }
 
+  await karteraToken.mint(defiBasket.address, ethers.utils.parseEther('10000000'));
+
   await defiBasket.unpause()
   console.log('defiBasket.unpause');
+
 
   
 }
@@ -447,7 +450,7 @@ async function loadContracts(network:string) {
    * contract addresses used 
    */
   let karteraAddress = getContractAddress(network, 'karteraAddress');
-  let defiBasketAddress = getContractAddress(network, 'defiBasketAddress');
+  // let defiBasketAddress = getContractAddress(network, 'defiBasketAddress');
   let govAddress = getContractAddress(network, 'govAddress');
   let timelockAddress = getContractAddress(network, 'timelockAddress');
   let karteraPriceOracleAddress = getContractAddress(network, 'karteraPriceOracleAddress');
@@ -455,17 +458,17 @@ async function loadContracts(network:string) {
   const KarteraToken = await ethers.getContractFactory("KarteraToken");
   karteraToken = await KarteraToken.attach(karteraAddress);
 
-  const DefiBasket = await ethers.getContractFactory("DefiBasket");
-  defiBasket = await DefiBasket.attach(defiBasketAddress);
+  // const DefiBasket = await ethers.getContractFactory("DefiBasket");
+  // defiBasket = await DefiBasket.attach(defiBasketAddress);
 
-  const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
-  gov = await GovAlpha.attach(govAddress);
+  // const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
+  // gov = await GovAlpha.attach(govAddress);
 
-  const Timelock = await ethers.getContractFactory("Timelock");
-  timelock = await Timelock.attach(timelockAddress);
+  // const Timelock = await ethers.getContractFactory("Timelock");
+  // timelock = await Timelock.attach(timelockAddress);
 
-  const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
-  karteraPriceOracle = await KarteraPriceOracle.attach(karteraPriceOracleAddress);
+  // const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
+  // karteraPriceOracle = await KarteraPriceOracle.attach(karteraPriceOracleAddress);
 }
 
 async function deployKarteraToken(){
