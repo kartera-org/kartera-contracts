@@ -109,13 +109,13 @@ interface IBasketLib {
     function governanceToken() external view returns (address);
 
     /// @notice get number of incentive tokens for $ deposit
-    function depositIncentive(uint256 dollaramount) external view returns (uint256);
+    function depositIncentive(uint256 dollaramount, address conaddr) external view returns (uint256);
 
     /// @notice get number of incentive tokens for $ withdrawn
-    function withdrawIncentive(uint256 dollaramount) external view returns (uint256);
+    function withdrawIncentive(uint256 dollaramount, address conaddr) external view returns (uint256);
 
     /// @notice get number of tokens to depost inorder to withdraw from active constituent
-    function withdrawCost(uint256 longdollaramount) external view returns (uint256);
+    function withdrawCost(uint256 longdollaramount, address conaddr) external view returns (uint256);
 
 
 }

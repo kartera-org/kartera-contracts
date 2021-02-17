@@ -194,7 +194,7 @@ contract BasketLib {
         uint256 amount = SafeMath.mul(numberoftokens, prc);
         amount= SafeMath.div(amount, power(10, decs));
         uint256 minttokens = tokensForDeposit(amount);
-        uint256 incentivesOffered = depositIncentiveI(SafeMath.div(amount, basketDecimals));
+        uint256 incentivesOffered = depositIncentiveI(SafeMath.div(amount, basketDecimals), conaddr);
         return (minttokens, incentivesOffered);
     }
 
@@ -217,7 +217,7 @@ contract BasketLib {
         dollaramount = SafeMath.div(dollaramount, basketDecimals);
         uint256 tokensredeemed = depositsForDollar(conaddr, dollaramount);
 
-        uint256 incentivesOffered = withdrawIncentiveI(SafeMath.div(dollaramount, basketDecimals));
+        uint256 incentivesOffered = withdrawIncentiveI(SafeMath.div(dollaramount, basketDecimals), conaddr);
         return (tokensredeemed, incentivesOffered);
     }
 
@@ -227,7 +227,7 @@ contract BasketLib {
         require(constituents[conaddr].active, "Constituent is inactive");
         uint256 tokenprice = tokenPriceI();
         uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice);
-        uint256 withdrawcost = withdrawCostI(SafeMath.div(dollaramount, basketDecimals));
+        uint256 withdrawcost = withdrawCostI(SafeMath.div(dollaramount, basketDecimals), conaddr);
         withdrawcost = SafeMath.div(withdrawcost, basketDecimals);
         // ERC20 tkn = ERC20(governanceToken);
         // tkn.transferFrom(msg.sender, address(this), withdrawcost);
@@ -425,7 +425,7 @@ contract BasketLib {
     }
 
     /// @notice get number of incentive tokens for $ deposit
-    function depositIncentiveI(uint256 dollaramount) public view returns (uint256) {
+    function depositIncentiveI(uint256 dollaramount, address conaddr) public view returns (uint256) {
         if(governanceToken == address(0)){
             return 0;
         }
@@ -439,13 +439,13 @@ contract BasketLib {
         }
     }
 
-    function depositIncentive(uint256 dollaramount) external view returns (uint256) {
-        return depositIncentiveI(dollaramount);
+    function depositIncentive(uint256 dollaramount, address conaddr) external view returns (uint256) {
+        return depositIncentiveI(dollaramount, conaddr);
     }
 
 
     /// @notice get number of incentive tokens for $ withdrawn
-    function withdrawIncentiveI(uint256 dollaramount) public view returns (uint256) {
+    function withdrawIncentiveI(uint256 dollaramount, address conaddr) public view returns (uint256) {
         if(governanceToken == address(0)){
             return 0;
         }
@@ -459,20 +459,20 @@ contract BasketLib {
         }
     }
 
-    function withdrawIncentive(uint256 dollaramount) public view returns (uint256) {
-        return withdrawIncentiveI(dollaramount);
+    function withdrawIncentive(uint256 dollaramount, address conaddr) public view returns (uint256) {
+        return withdrawIncentiveI(dollaramount, conaddr);
     }
 
 
     /// @notice get number of tokens to depost inorder to withdraw from active constituent
-    function withdrawCostI(uint256 longdollaramount) public view returns (uint256) {
+    function withdrawCostI(uint256 longdollaramount, address conaddr) public view returns (uint256) {
         require(governanceToken != address(0), 'cannot withdraw');
         uint256 d = SafeMath.mul(withdrawCostMultiplier, longdollaramount);
         return d;
     }
 
-    function withdrawCost(uint256 longdollaramount) public view returns (uint256) {
-        return withdrawCostI(longdollaramount);
+    function withdrawCost(uint256 longdollaramount, address conaddr) public view returns (uint256) {
+        return withdrawCostI(longdollaramount, conaddr);
     }
 
     function copyState(address oldcontainer) public {

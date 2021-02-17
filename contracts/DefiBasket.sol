@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity  >=0.4.22 <0.8.0;
-pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -160,7 +159,9 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable {
         token.transfer(msg.sender, tokensredeemed);
         basketLib.SubDeposit(conaddr, tokensredeemed);
         ERC20 tkn = ERC20(governanceToken);
-        tkn.transferFrom(msg.sender, address(this), withdrawcost);
+        if(withdrawcost>0){
+            tkn.transferFrom(msg.sender, address(this), withdrawcost);
+        }
         _burn(msg.sender, numberoftokens);
     }
 
@@ -215,18 +216,18 @@ contract DefiBasket is ERC20("Kartera Defi Basket", "kDEFI"), Ownable {
     }
 
     /// @notice get number of incentive tokens for $ deposit
-    function depositIncentive(uint256 dollaramount) external view returns (uint256) {
-        return basketLib.depositIncentive(dollaramount);
+    function depositIncentive(uint256 dollaramount, address conaddr) external view returns (uint256) {
+        return basketLib.depositIncentive(dollaramount, conaddr);
     }
 
     /// @notice get number of incentive tokens for $ withdrawn
-    function withdrawIncentive(uint256 dollaramount) external view returns (uint256) {
-        return basketLib.withdrawIncentive(dollaramount);
+    function withdrawIncentive(uint256 dollaramount, address conaddr) external view returns (uint256) {
+        return basketLib.withdrawIncentive(dollaramount, conaddr);
     }
 
     /// @notice get number of tokens to depost inorder to withdraw from active constituent
-    function withdrawCost(uint256 longdollaramount) external view returns (uint256) {
-        return basketLib.withdrawCost(longdollaramount);
+    function withdrawCost(uint256 longdollaramount, address conaddr) external view returns (uint256) {
+        return basketLib.withdrawCost(longdollaramount, conaddr);
     }
 
     function depositIncentiveMultiplier() external view returns (uint256) {
