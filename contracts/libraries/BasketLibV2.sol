@@ -39,16 +39,15 @@ contract BasketLibV2 {
 
     // map of constituent address by index
     mapping (uint16 => address) public constituentAddress;
-
     
     // total weight 
     uint8 internal totalWeight = 0;
 
-    // parameter overrides weight of each constituent until $1m
-    uint256 internal depositThreshold =  1000000000000000000000000;
+    // parameter overrides weight of each constituent until $1m with 18 decimals
+    uint256 public depositThreshold =  1000000000000000000000000;
 
     // address of governance token offered as incentive kart token address
-    address internal governanceToken;
+    address public governanceToken;
 
     // $1 to # of kartera tokens offered
     uint256 public depositIncentiveMultiplier;
@@ -478,12 +477,12 @@ contract BasketLibV2 {
 
     function copyState(address oldcontainer) public {
         require(msg.sender==manager, "Sender not manager" );
-        IBasketLib basketContainer = IBasketLib(oldcontainer);
-        uint16 n = basketContainer.numberOfConstituents();
+        IBasketLib basketInterface = IBasketLib(oldcontainer);
+        uint16 n = basketInterface.numberOfConstituents();
         for(uint16 i=0; i<n; i++){
-            address conaddr = basketContainer.constituentAddress(i);
+            address conaddr = basketInterface.constituentAddress(i);
             constituentAddress[i] = conaddr;
-            (address conaddr_, uint8 weight, uint8 weighttol, bool active, uint256 td, uint8 decimals) = basketContainer.getConstituentDetails(conaddr);
+            (address conaddr_, uint8 weight, uint8 weighttol, bool active, uint256 td, uint8 decimals) = basketInterface.getConstituentDetails(conaddr);
             constituents[conaddr].constituentAddress = conaddr_;
             constituents[conaddr].weight = weight;
             constituents[conaddr].weightTolerance = weighttol;
@@ -491,10 +490,6 @@ contract BasketLibV2 {
             constituents[conaddr].active = active;
             constituents[conaddr].totalDeposit = td;
             constituents[conaddr].decimals = decimals;
-            numberOfConstituents++;
-            if(active){
-                numberOfActiveConstituents++;
-            }
         }
 
     }

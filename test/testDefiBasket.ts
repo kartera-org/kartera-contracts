@@ -244,8 +244,17 @@ describe("DefiBasket functions", function () {
       console.log('actual ave addre: ', this.mockAave.address );
     });
 
+    it('should fail to change basket address', async function () {
+      await expectRevert(this.defiBasket.setBasketLib(this.basketLib2.address), 'Contract is not paused');
+    })
+
     it('pause defibasket check', async function () {
       await this.defiBasket.pause();
+
+      await this.defiBasket.setBasketLib(this.basketLib2.address);
+
+      await this.basketLib2.transferManager(this.defiBasket.address);
+
       await this.mockMkr
         .connect(this.alice)
         .approve(this.defiBasket.address, ethers.utils.parseEther("1000000"));
@@ -265,11 +274,11 @@ describe("DefiBasket functions", function () {
 
     it('updateDepositThreshold check', async function (){
       let depositTh = await this.defiBasket.depositThreshold();
-      console.log('deposit th : ', depositTh.toString() );
+      console.log('deposit th : ', ethers.utils.formatUnits(depositTh) );
       await this.defiBasket.updateDepositThreshold(ethers.utils.parseEther('1000'));
 
       depositTh = await this.defiBasket.depositThreshold();
-      console.log('deposit th : ', depositTh.toString() );
+      console.log('deposit th : ', ethers.utils.formatUnits(depositTh) );
 
     })
 });
