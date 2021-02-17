@@ -426,7 +426,7 @@ async function sendMockTokens(tokenaddr:string, signer:any, to:string, amount:st
 
 function getContractAddress(chain:string, contract:string): any {
   try{
-    let data = fs.readFileSync(path.resolve(__dirname, '/contractAddresses.txt'), 'utf8');
+    let data = fs.readFileSync(path.resolve(__dirname, './contractAddresses.txt'), 'utf8');
     let lines = data.split('##')
     for(let i=0; i<lines.length; i++){
       if(lines[i].includes(chain)){
