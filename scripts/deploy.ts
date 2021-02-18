@@ -52,7 +52,7 @@ let constituentsRinkeby = [
 
 async function main() {
 
-  await loadContracts('rinkeby');
+  // await loadContracts('rinkeby');
 
   // let prc = await karteraPriceOracle.price(constituents[1].addr);
   // console.log('price: ', prc.toString() );
@@ -501,14 +501,14 @@ async function deployBasketLib(basketAddr:string, kpoAddr:string, govtokenaddr:s
 }
 
 async function deployKarteraPriceOracle() {
-  // const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
-  // karteraPriceOracle = await KarteraPriceOracle.deploy();
-  // console.log('karteraPrice oracle address: ', karteraPriceOracle.address );
-  // await karteraPriceOracle.deployed();
+  const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
+  karteraPriceOracle = await KarteraPriceOracle.deploy();
+  console.log('karteraPrice oracle address: ', karteraPriceOracle.address );
+  await karteraPriceOracle.deployed();
 
   let link = [etherCLAddr];
-  // await karteraPriceOracle.addToken(constituentsRinkeby[0].addr, 1, link);
-  // console.log('added token 1: ',  );
+  await karteraPriceOracle.addToken(constituentsRinkeby[0].addr, 1, link);
+  console.log('added token 1: ',  );
 
   link = [constituents[1].claddr];
   await karteraPriceOracle.addToken(constituentsRinkeby[1].addr, 1, link);
