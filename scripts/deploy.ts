@@ -303,13 +303,13 @@ async function deployOnKovan(){
   await ethBasket.setBasketLib(basketLib.address);
   console.log('ethBasket.setBasketLib');
 
-  ethBasket.setGovernanceToken(karteraToken.address, ethers.utils.parseEther('100'));
+  await ethBasket.setGovernanceToken(karteraToken.address, ethers.utils.parseEther('100'));
   console.log('ethBasket.setGovernanceToken');
 
-  ethBasket.setWithdrawCost(ethers.utils.parseEther('1000'));
+  await ethBasket.setWithdrawCostMultiplier(ethers.utils.parseEther('1000'));
   console.log('ethBasket.setWithdrawCost');
 
-  ethBasket.transferOwnership( timelock.address);
+  await ethBasket.transferOwnership( timelock.address);
   console.log('ethBasket.transferOwnership');
 
 
@@ -470,7 +470,7 @@ async function loadContracts(network:string) {
   // defiBasket = await DefiBasket.attach(defiBasketAddress);
 
   // const EthBasket = await ethers.getContractFactory("EthBasket");
-  // ethBasket = await DefiBasket.attach(ethBasketAddress);
+  // ethBasket = await EthBasket.attach(ethBasketAddress);
 
   // const BasketLib = await ethers.getContractFactory("BasketLib");
   // basketLib = await BasketLib.attach(ethBasketLibAddress);
