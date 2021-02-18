@@ -57,6 +57,10 @@ contract BasketLib {
 
     // $1 to # of kartera tokens required to withdraw
     uint256 public withdrawCostMultiplier;
+
+    // internal (dummy) address for ether to add to constituents map
+    address ethAddress = address(0x0000000000000000000000000000000000000001);
+
     /** 
         constituentAddress: constituent address
         clPriceAddress: chain link contract address
@@ -146,10 +150,12 @@ contract BasketLib {
         constituents[conaddr].totalDeposit = 0;
         constituents[conaddr].active = true;
         constituents[conaddr].id = numberOfConstituents;
-
-        ERC20 token = ERC20(conaddr);
-        constituents[conaddr].decimals = token.decimals();
-
+        if(conaddr==ethAddress){
+            constituents[conaddr].decimals = 18;            
+        }else{
+            ERC20 token = ERC20(conaddr);
+            constituents[conaddr].decimals = token.decimals();
+        }
         constituentAddress[numberOfConstituents] = conaddr;
         totalWeight += weight;
         numberOfConstituents++;
