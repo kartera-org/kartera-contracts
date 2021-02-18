@@ -52,7 +52,7 @@ let constituentsRinkeby = [
 
 async function main() {
 
-  await loadContracts('rinkeby');
+  await loadContracts('kovan');
 
   // let prc = await karteraPriceOracle.price(constituents[1].addr);
   // console.log('price: ', prc.toString() );
@@ -62,7 +62,7 @@ async function main() {
   
   // await deployKarteraToken();
 
-  await deployKarteraPriceOracle();
+  // await deployKarteraPriceOracle();
 
 
   // const [alice, bob, carol] = await ethers.getSigners();
@@ -284,15 +284,15 @@ async function main() {
 
 async function deployOnKovan(){
 
-  // let EthBasket = await ethers.getContractFactory("EthBasket");
-  // ethBasket = await EthBasket.deploy();
-  // await ethBasket.deployed()
+  let EthBasket = await ethers.getContractFactory("EthBasket");
+  ethBasket = await EthBasket.deploy();
+  await ethBasket.deployed()
 
   console.log('ethbasket address: ', ethBasket.address);
 
-  // let BasketLib = await ethers.getContractFactory("BasketLib");
-  // basketLib = await BasketLib.deploy(ethBasket.address, karteraPriceOracle.address, karteraToken.address);
-  // await basketLib.deployed();
+  let BasketLib = await ethers.getContractFactory("BasketLib");
+  basketLib = await BasketLib.deploy(ethBasket.address, karteraPriceOracle.address, karteraToken.address);
+  await basketLib.deployed();
 
   console.log('basketLib address: ', basketLib.address);
 
@@ -457,8 +457,8 @@ async function loadContracts(network:string) {
   // let defiBasketAddress = getContractAddress(network, 'defiBasketAddress');
   // let ethBasketAddress = getContractAddress(network, 'ethBasketAddress');
   // let ethBasketLibAddress = getContractAddress(network, 'basketLibAddress');
-  // let govAddress = getContractAddress(network, 'govAddress');
-  // let timelockAddress = getContractAddress(network, 'timelockAddress');
+  let govAddress = getContractAddress(network, 'govAddress');
+  let timelockAddress = getContractAddress(network, 'timelockAddress');
   
   const KarteraToken = await ethers.getContractFactory("KarteraToken");
   karteraToken = await KarteraToken.attach(karteraAddress);
@@ -475,11 +475,11 @@ async function loadContracts(network:string) {
   // const BasketLib = await ethers.getContractFactory("BasketLib");
   // basketLib = await BasketLib.attach(ethBasketLibAddress);
 
-  // const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
-  // gov = await GovAlpha.attach(govAddress);
+  const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
+  gov = await GovAlpha.attach(govAddress);
 
-  // const Timelock = await ethers.getContractFactory("Timelock");
-  // timelock = await Timelock.attach(timelockAddress);
+  const Timelock = await ethers.getContractFactory("Timelock");
+  timelock = await Timelock.attach(timelockAddress);
 
 }
 
