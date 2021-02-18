@@ -68,7 +68,7 @@ async function main() {
   // const [alice, bob, carol] = await ethers.getSigners();
 
 
-  // await deployOnKovan();
+  await deployOnKovan();
 
   // let bal = await karteraToken.balanceOf(defiBasket.address);
   // let bal = await defiBasket.constituentPrice();
