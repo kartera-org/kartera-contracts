@@ -26,20 +26,28 @@ let zhiPubAddr = "0xbb31ae334462B9a736EA1DE2a61042BB0B106165";
 let erikaPubAdr ='0xc0AE19cf32285582f52991477A2a5fEa844f7A80';
 let jaiPubAddr ='0x0467C705ce681d25a4f5E44BA7252973C6d305B1';
 
-let constituents = [
-  {name:'Ether', addr:'0x0000000000000000000000000000000000000001', weight:40, weightTol:5, claddr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
-  {name:'MockAave', addr:'0xefF313696D5513Ab2d7763a967a64d26B0fBB793', weight:15, weightTol:5, claddr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
-  {name:'MockMkr', addr:'0x93a1d61641750DcA1826DeD628c82188C928307E', weight:15, weightTol:5, claddr:"0x0B156192e04bAD92B6C1C13cf8739d14D78D5701"},
-  {name:'MockSnx', addr:'0xbB4B258B362C7d9d07903E8934b45550a4A7F92C', weight:10, weightTol:5, claddr:"0xF9A76ae7a1075Fe7d646b06fF05Bd48b9FA5582e"},
-  {name:'MockUni', addr:'0x32Bd516d7C5cdD918477632558C01aF2663f3F69', weight:10, weightTol:5, claddr:"0x17756515f112429471F86f98D5052aCB6C47f6ee"},
-  {name:'MockYfi', addr:'0xd9D54E7016306A3009629833C2409Fd04F25A118', weight:10, weightTol:5, claddr:"0xC5d1B1DEb2992738C0273408ac43e1e906086B6C"},
-];
+let constituents:any[];
+//   {name:'Ether', addr:'0x0000000000000000000000000000000000000001', weight:40, weightTol:5, claddr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
+//   {name:'MockAave', addr:'0xefF313696D5513Ab2d7763a967a64d26B0fBB793', weight:15, weightTol:5, claddr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
+//   {name:'MockMkr', addr:'0x93a1d61641750DcA1826DeD628c82188C928307E', weight:15, weightTol:5, claddr:"0x0B156192e04bAD92B6C1C13cf8739d14D78D5701"},
+//   {name:'MockSnx', addr:'0xbB4B258B362C7d9d07903E8934b45550a4A7F92C', weight:10, weightTol:5, claddr:"0xF9A76ae7a1075Fe7d646b06fF05Bd48b9FA5582e"},
+//   {name:'MockUni', addr:'0x32Bd516d7C5cdD918477632558C01aF2663f3F69', weight:10, weightTol:5, claddr:"0x17756515f112429471F86f98D5052aCB6C47f6ee"},
+//   {name:'MockYfi', addr:'0xd9D54E7016306A3009629833C2409Fd04F25A118', weight:10, weightTol:5, claddr:"0xC5d1B1DEb2992738C0273408ac43e1e906086B6C"},
+// ];
 
-let constituentsRinkeby = [
-  {name:'Ether', addr:'0x0000000000000000000000000000000000000001', weight:40, weightTol:5, claddr:"0x8A753747A1Fa494EC906cE90E9f37563A8AF630e"},
-  {name:'MockBTC', addr:'0x55C95F29D342aEEd136925D352609635024722a2', weight:15, weightTol:5, claddr:"0xECe365B379E1dD183B20fc5f022230C044d51404"},
-  {name:'MockLink', addr:'0x04b09a0ec9fFd4072Ac0131Bd85C8FC8A4451a70', weight:15, weightTol:5, claddr:"0xd8bD0a1cB028a31AA859A21A3758685a95dE4623"},
-  {name:'MockSnx', addr:'0xc9C62fBc0a1f8A360Bf90AB876AA56B4DDEbb750', weight:10, weightTol:5, claddr:"0xE96C4407597CD507002dF88ff6E0008AB41266Ee"},
+let ethConstituentsMainnet = [
+  {name:'BTC', addr:'0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', weight:40, weightTol:5, claddr:['0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c']},
+  {name:'Ether', addr:'0x0000000000000000000000000000000000000001', weight:40, weightTol:5, claddr:['0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419']},
+  {name:'Link', addr:'0x514910771AF9Ca656af840dff83E8264EcF986CA', weight:15, weightTol:5, claddr:['0x2c1d072e956AFFC0D435Cb7AC38EF18d24d9127c']},
+  {name:'UNI', addr:'0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', weight:15, weightTol:5, claddr:['0xD6aA3D25116d8dA79Ea0246c4826EB951872e02e', '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419']},
+  {name:'AAVE', addr:'0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9', weight:10, weightTol:5, claddr:['0x547a514d5e3769680Ce22B2361c10Ea13619e8a9']},
+  {name:'SNX', addr:'0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F', weight:10, weightTol:5, claddr:['0xDC3EA94CD0AC27d9A86C180091e7f78C683d3699']},
+  {name:'CEL', addr:'0xaaAEBE6Fe48E54f431b0C390CfaF0b017d09D42d', weight:10, weightTol:5, claddr:['	0x75FbD83b4bd51dEe765b2a01e8D3aa1B020F9d33', '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419']},
+  {name:'SUSHI', addr:'0x6B3595068778DD592e39A122f4f5a5cF09C90fE2', weight:10, weightTol:5, claddr:['0xe572CeF69f43c2E488b33924AF04BDacE19079cf', '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419']},
+  {name:'CRO', addr:'0xA0b73E1Ff0B80914AB6fe0444E65848C4C34450b', weight:10, weightTol:5, claddr:['0xcA696a9Eb93b81ADFE6435759A29aB4cf2991A96', '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419']},
+  {name:'FTX', addr:'0x50D1c9771902476076eCFc8B2A83Ad6b9355a4c9', weight:10, weightTol:5, claddr:['0xF0985f7E2CaBFf22CecC5a71282a89582c382EFE', '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419']},
+  {name:'MKR', addr:'0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2', weight:10, weightTol:5, claddr:['0x24551a8Fb2A7211A25a17B1481f043A8a8adC7f2', '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419']},
+  {name:'GRT', addr:'0xc944E90C64B2c07662A292be6244BDf05Cda44a7', weight:10, weightTol:5, claddr:['0x17D054eCac33D91F7340645341eFB5DE9009F1C1', '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419']},
 ];
 
 /** Ganache deployed contract information
@@ -53,6 +61,13 @@ let constituentsRinkeby = [
 async function main() {
 
   await loadContracts('kovan');
+
+  writeToFile(`karteraAddress:${karteraToken.address}`);
+
+
+  await deployKarteraPriceOracleMainNet();
+
+  // await loadContracts('kovan');
 
   // let prc = await karteraPriceOracle.price(constituents[1].addr);
   // console.log('price: ', prc.toString() );
@@ -68,7 +83,7 @@ async function main() {
   // const [alice, bob, carol] = await ethers.getSigners();
 
 
-  await deployOnKovan();
+  // await deployOnKovan();
 
   // let bal = await karteraToken.balanceOf(defiBasket.address);
   // let bal = await defiBasket.constituentPrice();
@@ -448,6 +463,16 @@ function getContractAddress(chain:string, contract:string): any {
   }
 }
 
+function writeToFile(texttowrite:string): any {
+  let filename:string = 'deployAddress.txt';
+  try{
+    fs.appendFileSync(path.resolve(__dirname, filename), texttowrite);
+  }catch(e){
+    console.log('error in file write: ', e );
+    return '';
+  }
+}
+
 async function loadContracts(network:string) {
   /**
    * contract addresses used 
@@ -500,6 +525,21 @@ async function deployBasketLib(basketAddr:string, kpoAddr:string, govtokenaddr:s
   console.log('basketLib address: ', basketLib.address );
 }
 
+async function deployKarteraPriceOracleMainNet() {
+  const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
+  karteraPriceOracle = await KarteraPriceOracle.deploy();
+  console.log('karteraPrice oracle address: ', karteraPriceOracle.address );
+  await karteraPriceOracle.deployed();
+  writeToFile(`Mainnet#KarteraPriceOracleAddress:${karteraPriceOracle.address}`);
+
+  for(let i=0; i<ethConstituentsMainnet.length; i++){
+    await karteraPriceOracle.addToken(ethConstituentsMainnet[i].addr, ethConstituentsMainnet[i].claddr.length, ethConstituentsMainnet[i].claddr);
+    console.log('added token : ',  i);
+  }
+
+
+}
+
 async function deployKarteraPriceOracle() {
   // const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
   // karteraPriceOracle = await KarteraPriceOracle.deploy();
@@ -514,13 +554,13 @@ async function deployKarteraPriceOracle() {
   // await karteraPriceOracle.addToken(constituentsRinkeby[1].addr, 1, link);
   // console.log('added token 2: ',  );
 
-  link = [constituentsRinkeby[2].claddr];
-  await karteraPriceOracle.addToken(constituentsRinkeby[2].addr, 1, link);
-  console.log('added token 3: ',  );
+  // link = [constituentsRinkeby[2].claddr];
+  // await karteraPriceOracle.addToken(constituentsRinkeby[2].addr, 1, link);
+  // console.log('added token 3: ',  );
 
-  link = [constituentsRinkeby[3].claddr];
-  await karteraPriceOracle.addToken(constituentsRinkeby[3].addr, 1, link);
-  console.log('added token 4: ',  );
+  // link = [constituentsRinkeby[3].claddr];
+  // await karteraPriceOracle.addToken(constituentsRinkeby[3].addr, 1, link);
+  // console.log('added token 4: ',  );
 
 }
 

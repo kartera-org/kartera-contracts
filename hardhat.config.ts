@@ -41,6 +41,10 @@ const config: HardhatUserConfig = {
       // url: `HTTP://127.0.0.1:7545`,
       // accounts: [localhost_PRIVATE_KEY],
     },
+    mainnet: {
+      url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
+      accounts: [PRIVATE_KEY],
+    },
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${INFURA_API_KEY}`,
       accounts: [PRIVATE_KEY2],
