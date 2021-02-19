@@ -16,4 +16,5 @@ basketLibAddress:0xE52446811ffF31178B47566E99DF398907338a75
 ##mainnet
 karteraAddress:0x324048a600DE0Cb831ef359E15c671c113f9255c
 karteraPriceOracleAddress:0x00Aa98bb79338897844Bd703F716dba535D0Ec51
-defiBasketAddress:b
+timelockAddress:0x6D2d888A8A145DCEF56A30A1C5Df84212C672dF0
+defiBasketAddress:g
