@@ -15,4 +15,5 @@ ethBasketAddress:
 basketLibAddress:0xE52446811ffF31178B47566E99DF398907338a75
 ##mainnet
 karteraAddress:a
+karteraPriceOracleAddress:0x00Aa98bb79338897844Bd703F716dba535D0Ec51
 defiBasketAddress:b

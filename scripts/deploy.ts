@@ -420,11 +420,16 @@ async function deployGov () {
 
   const Timelock = await ethers.getContractFactory('Timelock');
   let timelock = await Timelock.deploy(alice.address, time.duration.days(2).toString())
+  await timelock.deployed();
   console.log('timelock address: ', timelock.address );
+  writeToFile(`Mainnet#TimelockAddress:${timelock.address}`);
 
   const GovAlpha = await ethers.getContractFactory('GovernorAlpha');
   let gov = await GovAlpha.deploy(timelock.address, karteraToken.address, alice.address);
+  await gov.deployed();
+
   console.log('gov address: ', gov.address );
+  writeToFile(`Mainnet#TimelockAddress:${timelock.address}`);
 
   await timelock.setPendingAdmin(gov.address);
   await gov.__acceptAdmin();
@@ -516,6 +521,8 @@ async function deployKarteraToken(){
   console.log('karteraToken contract id: ', karteraToken.address);
   console.log('transaction id: ', karteraToken.deployTransaction.hash);
   await karteraToken.deployed();
+  writeToFile(`Mainnet#KarteraTokenAddress:${karteraToken.address}`);
+
 }
 
 async function deployBasketLib(basketAddr:string, kpoAddr:string, govtokenaddr:string) {
