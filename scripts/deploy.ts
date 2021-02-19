@@ -471,6 +471,7 @@ function getContractAddress(chain:string, contract:string): any {
 function writeToFile(texttowrite:string): any {
   let filename:string = 'deployAddress.txt';
   try{
+    texttowrite += '\r\n';
     fs.appendFileSync(path.resolve(__dirname, filename), texttowrite);
   }catch(e){
     console.log('error in file write: ', e );
