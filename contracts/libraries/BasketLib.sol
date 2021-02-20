@@ -348,15 +348,6 @@ contract BasketLib {
         x = SafeMath.div(x, prc);
         return x;
     }
-        
-    // /// @notice number of incentive tokens required to withdraw constituent
-    // function constituentWithdrawCost(uint256 numberoftokens) public view returns (uint256){
-    //     uint256 tokenprice = tokenPrice();
-    //     uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice);
-    //     uint256 withdrawcost = withdrawCost(SafeMath.div(dollaramount, basketDecimals));
-    //     withdrawcost = SafeMath.div(withdrawcost, basketDecimals);
-    //     return withdrawcost;
-    // }
 
     /// @notice if deposits can be made for a constituents
     function acceptingDepositI(address conaddr) public view returns (bool) {

@@ -60,12 +60,24 @@ let ethConstituentsMainnet = [
 
 async function main() {
 
-  await loadContracts('kovan');
+  await deployKarteraToken();
+  await deployGov();
 
-  writeToFile(`karteraAddress:${karteraToken.address}`);
+  // await loadContracts('kovan');
+
+  // console.log('basket adddr: ', ethBasket.address );
+
+  // let gas = await ethBasket.addConstituent(ethConstituentsMainnet[0].addr, ethConstituentsMainnet[0].weight, ethConstituentsMainnet[0].weightTol);
+  // console.log('addconstituent gas: ', gas.toString() );
+
+  // gas = await ethBasket.makeDeposit(ethConstituentsMainnet[0].addr, ethers.utils.parseEther('1'));
+  // console.log('addconstituent gas: ', gas.toString() );
 
 
-  await deployKarteraPriceOracleMainNet();
+  // writeToFile(`karteraAddress:${karteraToken.address}`);
+
+
+  // await deployKarteraPriceOracleMainNet();
 
   // await loadContracts('kovan');
 
@@ -425,7 +437,12 @@ async function deployGov () {
   writeToFile(`Mainnet#TimelockAddress:${timelock.address}`);
 
   const GovAlpha = await ethers.getContractFactory('GovernorAlpha');
-  let gov = await GovAlpha.deploy(timelock.address, karteraToken.address, alice.address);
+  let txreq = await GovAlpha.getDeployTransaction(timelock.address, karteraToken.address, alice.address);
+  const tx = {
+    gasPrice: 100000000000,
+    nonce: 1,
+  }
+  let gov = await GovAlpha.deploy(timelock.address, karteraToken.address, alice.address, {gasPrice:100000000000});
   await gov.deployed();
 
   console.log('gov address: ', gov.address );
@@ -483,34 +500,34 @@ async function loadContracts(network:string) {
   /**
    * contract addresses used 
    */
-  let karteraAddress = getContractAddress(network, 'karteraAddress');
-  let karteraPriceOracleAddress = getContractAddress(network, 'karteraPriceOracleAddress');
-  // let defiBasketAddress = getContractAddress(network, 'defiBasketAddress');
-  // let ethBasketAddress = getContractAddress(network, 'ethBasketAddress');
-  // let ethBasketLibAddress = getContractAddress(network, 'basketLibAddress');
-  let govAddress = getContractAddress(network, 'govAddress');
-  let timelockAddress = getContractAddress(network, 'timelockAddress');
   
-  const KarteraToken = await ethers.getContractFactory("KarteraToken");
-  karteraToken = await KarteraToken.attach(karteraAddress);
+  // let karteraAddress = getContractAddress(network, 'karteraAddress');
+  // const KarteraToken = await ethers.getContractFactory("KarteraToken");
+  // karteraToken = await KarteraToken.attach(karteraAddress);
 
-  const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
-  karteraPriceOracle = await KarteraPriceOracle.attach(karteraPriceOracleAddress);
+  // let karteraPriceOracleAddress = getContractAddress(network, 'karteraPriceOracleAddress');
+  // const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
+  // karteraPriceOracle = await KarteraPriceOracle.attach(karteraPriceOracleAddress);
 
+  // let defiBasketAddress = getContractAddress(network, 'defiBasketAddress');
   // const DefiBasket = await ethers.getContractFactory("DefiBasket");
   // defiBasket = await DefiBasket.attach(defiBasketAddress);
 
-  // const EthBasket = await ethers.getContractFactory("EthBasket");
-  // ethBasket = await EthBasket.attach(ethBasketAddress);
+  let ethBasketAddress = getContractAddress(network, 'ethBasketAddress');
+  const EthBasket = await ethers.getContractFactory("EthBasket");
+  ethBasket = await EthBasket.attach(ethBasketAddress);
 
+  // let ethBasketLibAddress = getContractAddress(network, 'basketLibAddress');
   // const BasketLib = await ethers.getContractFactory("BasketLib");
   // basketLib = await BasketLib.attach(ethBasketLibAddress);
 
-  const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
-  gov = await GovAlpha.attach(govAddress);
+  // let govAddress = getContractAddress(network, 'govAddress');
+  // const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
+  // gov = await GovAlpha.attach(govAddress);
 
-  const Timelock = await ethers.getContractFactory("Timelock");
-  timelock = await Timelock.attach(timelockAddress);
+  // let timelockAddress = getContractAddress(network, 'timelockAddress');
+  // const Timelock = await ethers.getContractFactory("Timelock");
+  // timelock = await Timelock.attach(timelockAddress);
 
 }
 
@@ -623,6 +640,44 @@ async function deployMockContracts() {
 
     await token.deployed();
   }
+}
+
+async function estimateGas() {
+  let karteraaddress = "0x1d10450D4cfA9241EaB34Ee7E6b77956E29E6794";
+let timelockaddress = '0xd1631e9ad08726a6b67d1495034324b831643c06';
+
+
+  const [alice] = await ethers.getSigners();
+
+  // const KarteraToken = await ethers.getContractFactory("KarteraToken");
+  // let tx = KarteraToken.getDeployTransaction();
+  // let gasrequired = await ethers.provider.estimateGas(tx);
+  // console.log('KarteraToken: ', gasrequired.toString() );
+
+  // const KarteraPriceOracle = await ethers.getContractFactory("KarteraPriceOracle");
+  // tx = KarteraPriceOracle.getDeployTransaction();
+  // gasrequired = await ethers.provider.estimateGas(tx);
+  // console.log('KarteraPriceOracle: ', gasrequired.toString() );
+
+  // const Timelock = await ethers.getContractFactory("Timelock");
+  // tx = Timelock.getDeployTransaction(alice.address, time.duration.days(3).toString());
+  // gasrequired = await ethers.provider.estimateGas(tx);
+  // console.log('Timelock: ', gasrequired.toString() );
+
+  // const GovAlpha = await ethers.getContractFactory("GovernorAlpha");
+  // tx = GovAlpha.getDeployTransaction(timelockaddress, karteraaddress, alice.address);
+  // gasrequired = await ethers.provider.estimateGas(tx);
+  // console.log('GovAlpha: ', gasrequired.toString() );
+
+  // const BasketLib = await ethers.getContractFactory("BasketLib");
+  // tx = BasketLib.getDeployTransaction(karteraaddress, karteraaddress, karteraaddress);
+  // gasrequired = await ethers.provider.estimateGas(tx);
+  // console.log('BasketLib: ', gasrequired.toString() );
+  
+  // const EthBasket = await ethers.getContractFactory("EthBasket");
+  // let tx = EthBasket.getDeployTransaction();
+  // let gasrequired = await ethers.provider.estimateGas(tx);
+  // console.log('EthBasket: ', gasrequired.toString() );
 }
 
 main()
