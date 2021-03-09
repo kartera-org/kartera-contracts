@@ -60,6 +60,18 @@ const config: HardhatUserConfig = {
     ganache: {
       url: "http://127.0.0.1:7545",
       accounts: [GANACHE_PRIVATE_KEY]
+    },
+    bsctestnet: {
+      url: "https://data-seed-prebsc-1-s1.binance.org:8545",
+      chainId: 97,
+      gasPrice: 20000000000,
+      accounts: [PRIVATE_KEY],
+    },
+    bscmainnet: {
+      url: "https://bsc-dataseed.binance.org/",
+      chainId: 56,
+      gasPrice: 20000000000,
+      accounts: [PRIVATE_KEY],
     }
   },
   etherscan: {
@@ -68,7 +80,7 @@ const config: HardhatUserConfig = {
     apiKey: ETHERSCAN_API_KEY,
   },
   mocha: {
-    // timeout: 100000000
+    timeout: 100000000
   }
 };
 

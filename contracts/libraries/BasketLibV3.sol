@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity  >=0.4.22 <0.8.0;
-pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./BasketLib.sol";
 import "../interfaces/IPriceOracle.sol";
-import "../interfaces/IBasketLib.sol";
+import "../interfaces/IBasketLibV3.sol";
 
 /// @title DefiBasket 
-contract BasketLib is IBasketLib {
-    using SafeMath for uint256;
-
+contract BasketLibV3 is IBasketLibV3 {
     // address of manager of the library 
     address public manager;
 
@@ -60,28 +58,10 @@ contract BasketLib is IBasketLib {
     // $1 to # of kartera tokens required to withdraw
     uint256 public override withdrawCostMultiplier;
 
-    // internal (dummy) address for ether to add to constituents map
-    address ethAddress = address(0x0000000000000000000000000000000000000001);
-
-    /** 
-        constituentAddress: constituent address
-        clPriceAddress: chain link contract address
-        weight: weight of the constituent
-        id: index of the constituent
-        active: true => part of the basket on deposits can be made, false => removed from basket only withdrawals can be made
-        totalDeposit: # of tokens deposited in the basket
-        decimals: decimals of constituent token
-    */
-
-    // struct Constituent{
-    //     address constituentAddress;
-    //     uint8 weight;
-    //     uint8 weightTolerance;
-    //     uint16 id;
-    //     bool active;
-    //     uint256 totalDeposit;
-    //     uint8 decimals;
-    // }
+    uint256 pendingSenderCount = 0;
+    mapping (uint256 => address) pendingSenders;
+    mapping (address => mapping(address => uint256)) pendingDeposits;
+    mapping (address => mapping(address => uint256)) pendingWithdrawals;
 
     /// @notice contract constructor make sender the manger and sets governance token to zero address
     constructor(address basketaddr, address kpo, address govtoken) public {
@@ -151,13 +131,10 @@ contract BasketLib is IBasketLib {
         constituents[conaddr].weightTolerance = weighttol;
         constituents[conaddr].totalDeposit = 0;
         constituents[conaddr].active = true;
+        constituents[conaddr].acceptingDeposit = true;
         constituents[conaddr].id = numberOfConstituents;
-        if(conaddr==ethAddress){
-            constituents[conaddr].decimals = 18;            
-        }else{
-            ERC20 token = ERC20(conaddr);
-            constituents[conaddr].decimals = token.decimals();
-        }
+        ERC20 token = ERC20(conaddr);
+        constituents[conaddr].decimals = token.decimals();
         constituentAddress[numberOfConstituents] = conaddr;
         totalWeight += weight;
         numberOfConstituents++;
@@ -193,16 +170,25 @@ contract BasketLib is IBasketLib {
         constituents[conaddr].weightTolerance = weightTolerance;
     }
 
-    function makeDepositCheck(address conaddr, uint256 numberoftokens) external view override returns (uint256, uint256){
+    function makeDepositCheck(address conaddr, uint256 numberoftokens) external view override returns (bool) {
         require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
         require( constituents[conaddr].active, "Constituent is not active");
-        bool acceptingDeposits = acceptingActualDepositI(conaddr, numberoftokens);
+        bool acceptingDeposits = constituents[conaddr].acceptingDeposit;
         require(acceptingDeposits, "No further deposits accepeted for this contract");
-        (uint256 prc, uint8 decs) = constituentPrice(conaddr);
-        uint256 amount = SafeMath.mul(numberoftokens, prc).div(power(10, decs));
-        uint256 minttokens = tokensForDeposit(amount);
-        uint256 incentivesOffered = depositIncentiveI(SafeMath.div(amount, basketDecimals), conaddr);
-        return (minttokens, incentivesOffered);
+
+        uint256 amount  = pendingDeposits[msg.sender][conaddr];
+        if(amount >= 0){
+            return true;
+        }
+
+        return false;
+
+        // (uint256 prc, uint8 decs) = constituentPrice(conaddr);
+        // uint256 amount = SafeMath.mul(numberoftokens, prc);
+        // amount= SafeMath.div(amount, power(10, decs));
+        // uint256 minttokens = tokensForDeposit(amount);
+        // uint256 incentivesOffered = depositIncentiveI(SafeMath.div(amount, basketDecimals), conaddr);
+        // return (minttokens, incentivesOffered);
     }
 
     function AddDeposit(address conaddr, uint256 numberoftokens) external override {
@@ -216,34 +202,42 @@ contract BasketLib is IBasketLib {
     }
 
     /// @notice exchange basket tokens for removed constituent tokens
-    function withdrawInactiveCheck(address conaddr, uint256 numberoftokens) external view override returns(uint256, uint256) {
+    function withdrawInactiveCheck(address conaddr, uint256 numberoftokens) external view override returns(bool) {
         require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
         require(!constituents[conaddr].active, "Cannot withdraw from active constituent");
-        uint256 tokenprice = tokenPriceI();
-        uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice).div(basketDecimals);
-        uint256 tokensredeemed = depositsForDollar(conaddr, dollaramount);
 
-        uint256 incentivesOffered = withdrawIncentiveI(SafeMath.div(dollaramount, basketDecimals), conaddr);
-        return (tokensredeemed, incentivesOffered);
+        return true;
+        // uint256 tokenprice = tokenPriceI();
+        // uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice);
+        // dollaramount = SafeMath.div(dollaramount, basketDecimals);
+        // uint256 tokensredeemed = depositsForDollar(conaddr, dollaramount);
+
+        // uint256 incentivesOffered = withdrawIncentiveI(SafeMath.div(dollaramount, basketDecimals), conaddr);
+        // return (tokensredeemed, incentivesOffered);
     }
 
     /// @notice exchange basket tokens for active constituent tokens
-    function withdrawActiveCheck(address conaddr, uint256 numberoftokens) external view override returns(uint256, uint256) {
+    function withdrawActiveCheck(address conaddr, uint256 numberoftokens) external view override returns (bool) {
         require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
         require(constituents[conaddr].active, "Constituent is inactive");
-        uint256 tokenprice = tokenPriceI();
-        uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice);
-        uint256 withdrawcost = withdrawCostI(SafeMath.div(dollaramount, basketDecimals), conaddr).div(basketDecimals);
-        // ERC20 tkn = ERC20(governanceToken);
-        // tkn.transferFrom(msg.sender, address(this), withdrawcost);
 
-        dollaramount = SafeMath.div(dollaramount, basketDecimals);
-        uint256 tokensredeemed = depositsForDollar(conaddr, dollaramount);
-        // ERC20 token = ERC20(conaddr);
-        // token.transfer(msg.sender, tokensredeemed);
-        // constituents[conaddr].totalDeposit -= tokensredeemed;
 
-        return (tokensredeemed, withdrawcost);
+        return true;
+
+        // uint256 tokenprice = tokenPriceI();
+        // uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice);
+        // uint256 withdrawcost = withdrawCostI(SafeMath.div(dollaramount, basketDecimals), conaddr);
+        // withdrawcost = SafeMath.div(withdrawcost, basketDecimals);
+        // // ERC20 tkn = ERC20(governanceToken);
+        // // tkn.transferFrom(msg.sender, address(this), withdrawcost);
+
+        // dollaramount = SafeMath.div(dollaramount, basketDecimals);
+        // uint256 tokensredeemed = depositsForDollar(conaddr, dollaramount);
+        // // ERC20 token = ERC20(conaddr);
+        // // token.transfer(msg.sender, tokensredeemed);
+        // // constituents[conaddr].totalDeposit -= tokensredeemed;
+
+        // return (tokensredeemed, withdrawcost);
     }
     
     /// @notice update deposit threshold
@@ -285,7 +279,8 @@ contract BasketLib is IBasketLib {
         for(uint8 i = 0; i < numberOfConstituents; i++) {
             address addr = constituentAddress[i];
             (uint prc, uint8 decs) = constituentPrice(addr);
-            uint256 x = SafeMath.mul(prc, constituents[addr].totalDeposit).div(power(10, decs));            
+            uint256 x = SafeMath.mul(prc, constituents[addr].totalDeposit);
+            x = SafeMath.div(x, power(10, decs));            
             totaldeposit += x;
         }
         return totaldeposit;
@@ -296,7 +291,8 @@ contract BasketLib is IBasketLib {
         uint256 totaldeposit = totalDeposit();
         ERC20 basket = ERC20(basketaddress);
         if (totaldeposit > 0) {
-            uint256 x = SafeMath.mul(totaldeposit, basketDecimals).div(basket.totalSupply());
+            uint256 x = SafeMath.mul(totaldeposit, basketDecimals);
+            x = SafeMath.div(x, basket.totalSupply());
             return x;
         }
         return SafeMath.mul(initialBasketValue, basketDecimals);
@@ -310,28 +306,33 @@ contract BasketLib is IBasketLib {
     function exchangeRate(address conaddr) external view override returns (uint256) {
         require(constituents[conaddr].constituentAddress == conaddr, 'Constituent does not exist');
         (uint prc, uint8 decs) = constituentPrice(conaddr);
-        uint256 amount = SafeMath.mul(prc, basketDecimals).div(power(10, decs));
+        uint256 amount = SafeMath.mul(prc, basketDecimals);
+        amount = SafeMath.div(amount, power(10, decs));
         uint256 tokens = tokensForDeposit(amount);
         return tokens;
     }
 
     /// @notice # of basket tokens for deposit $ amount 
     function tokensForDeposit(uint amount) public view returns (uint256) {
-        uint256 x = SafeMath.mul(amount, basketDecimals).div(tokenPriceI());
+        uint256 x = SafeMath.mul(amount, basketDecimals);
+        x = SafeMath.div(x, tokenPriceI());
         return x;
     }
 
     /// @notice number of inactive constituent tokens for 1 basket token
     function depositsForTokens(address conaddr, uint numberoftokens) public view returns (uint256) {
         (uint prc, uint8 decs) = constituentPrice(conaddr);
-        uint256 x = SafeMath.mul(numberoftokens, tokenPriceI()).mul(power(10, decs)).div(prc);
+        uint256 x = SafeMath.mul(numberoftokens, tokenPriceI());
+        x = SafeMath.mul(x, power(10, decs));
+        x = SafeMath.div(x, prc);
         return x;
     }
 
     /// @notice number of inactive constituent tokens for dollar amount 
     function depositsForDollar(address conaddr, uint256 dollaramount) public view returns (uint256) {
         (uint prc, uint8 decs) = constituentPrice(conaddr);
-        uint256 x = SafeMath.mul(dollaramount, power(10, decs)).div(prc);
+        uint256 x = SafeMath.mul(dollaramount, power(10, decs));
+        x = SafeMath.div(x, prc);
         return x;
     }
 
@@ -342,7 +343,10 @@ contract BasketLib is IBasketLib {
         uint256 totaldeposit = totalDeposit();
         if (totaldeposit > depositThreshold){
             (uint256 prc, uint8 decs) = constituentPrice(conaddr);
-            currentweight = SafeMath.mul(100, constituents[conaddr].totalDeposit).mul( prc).div(totaldeposit).div(power(10, decs));
+            currentweight = SafeMath.mul(100, constituents[conaddr].totalDeposit);
+            currentweight = SafeMath.mul(currentweight, prc);
+            currentweight = SafeMath.div(currentweight, totaldeposit);
+            currentweight = SafeMath.div(currentweight, power(10, decs));
         }else{
             return true;
         }
@@ -362,9 +366,10 @@ contract BasketLib is IBasketLib {
         uint256 totaldeposit = totalDepositAfter(conaddr, numberOfTokens);
         if (totaldeposit > depositThreshold){
             (uint256 prc, uint8 decs) = constituentPrice(conaddr);
-            uint256 td = constituents[conaddr].totalDeposit;
-            currentweight = td.add(numberOfTokens).mul(100).div(totaldeposit).div(power(10, decs));
-            // currentweight = SafeMath.mul(100, SafeMath.add(td, numberOfTokens)).mul(prc).div(totaldeposit).div(power(10, decs));
+            currentweight = SafeMath.mul(100, SafeMath.add(constituents[conaddr].totalDeposit, numberOfTokens));
+            currentweight = SafeMath.mul(currentweight, prc);
+            currentweight = SafeMath.div(currentweight, totaldeposit);
+            currentweight = SafeMath.div(currentweight, power(10, decs));
         }else{
             return true;
         }
@@ -379,17 +384,19 @@ contract BasketLib is IBasketLib {
     }
 
     /// @notice total # of tokens after new deposit
-    function totalDepositAfter(address conaddr, uint256 numberOfTokens) internal view virtual returns (uint256) {
+    function totalDepositAfter(address conaddr, uint256 numberOfTokens) internal view virtual returns(uint256) {
         
         uint256 totaldeposit = 0;
         for(uint8 i = 0; i < numberOfConstituents; i++) {
             address addr = constituentAddress[i];
             (uint prc, uint8 decs) = constituentPrice(addr);
             if(addr==conaddr){
-                uint256 x = SafeMath.mul(prc, SafeMath.add(constituents[addr].totalDeposit, numberOfTokens)).div(power(10, decs));
+                uint256 x = SafeMath.mul(prc, SafeMath.add(constituents[addr].totalDeposit, numberOfTokens));
+                x = SafeMath.div(x, power(10, decs));
                 totaldeposit += x;
             }else{
-                uint256 x = SafeMath.mul(prc, constituents[addr].totalDeposit).div(power(10, decs));
+                uint256 x = SafeMath.mul(prc, constituents[addr].totalDeposit);
+                x = SafeMath.div(x, power(10, decs));
                 totaldeposit += x;
             }
         }
@@ -470,4 +477,6 @@ contract BasketLib is IBasketLib {
     function power(uint256 a, uint8 b) internal pure returns(uint256) {
         return a ** b;
     }
+    
+    
 }

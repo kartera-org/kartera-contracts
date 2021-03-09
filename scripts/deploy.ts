@@ -1,5 +1,7 @@
 import { ethers } from "hardhat";
-import { GovernorAlpha, KarteraToken } from "../typechain";
+import { ChainId, Token, INIT_CODE_HASH } from '@uniswap/sdk'
+import { getCreate2Address } from '@ethersproject/address';
+import { pack, keccak256 } from '@ethersproject/solidity';
 const { expectRevert, time } = require('@openzeppelin/test-helpers');
 import * as fs from 'fs';
 import * as path from 'path';
@@ -22,18 +24,18 @@ const etherCLAddr = '0x8A753747A1Fa494EC906cE90E9f37563A8AF630e';
 // let govaddress = '0x03c1a459113790247deab13edd2c73cf05d9e002';
 // let timelockaddress = '0xd1631e9ad08726a6b67d1495034324b831643c06';
 
-let zhiPubAddr = "0xbb31ae334462B9a736EA1DE2a61042BB0B106165";
+let zhiPubAddr ='0xbb31ae334462B9a736EA1DE2a61042BB0B106165';
 let erikaPubAdr ='0xc0AE19cf32285582f52991477A2a5fEa844f7A80';
-let jaiPubAddr ='0x0467C705ce681d25a4f5E44BA7252973C6d305B1';
+let jaiPubAddr ='0x0467C705ce681d25a4f5E44BA7252973C6d305B1'; 
 
-let constituents:any[];
-//   {name:'Ether', addr:'0x0000000000000000000000000000000000000001', weight:40, weightTol:5, claddr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
-//   {name:'MockAave', addr:'0xefF313696D5513Ab2d7763a967a64d26B0fBB793', weight:15, weightTol:5, claddr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
-//   {name:'MockMkr', addr:'0x93a1d61641750DcA1826DeD628c82188C928307E', weight:15, weightTol:5, claddr:"0x0B156192e04bAD92B6C1C13cf8739d14D78D5701"},
-//   {name:'MockSnx', addr:'0xbB4B258B362C7d9d07903E8934b45550a4A7F92C', weight:10, weightTol:5, claddr:"0xF9A76ae7a1075Fe7d646b06fF05Bd48b9FA5582e"},
-//   {name:'MockUni', addr:'0x32Bd516d7C5cdD918477632558C01aF2663f3F69', weight:10, weightTol:5, claddr:"0x17756515f112429471F86f98D5052aCB6C47f6ee"},
-//   {name:'MockYfi', addr:'0xd9D54E7016306A3009629833C2409Fd04F25A118', weight:10, weightTol:5, claddr:"0xC5d1B1DEb2992738C0273408ac43e1e906086B6C"},
-// ];
+let constituents = [
+  {name:'Ether', addr:'0x0000000000000000000000000000000000000001', weight:40, weightTol:5, claddr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
+  {name:'MockAave', addr:'0xefF313696D5513Ab2d7763a967a64d26B0fBB793', weight:15, weightTol:5, claddr:"0xd04647B7CB523bb9f26730E9B6dE1174db7591Ad"},
+  {name:'MockMkr', addr:'0x93a1d61641750DcA1826DeD628c82188C928307E', weight:15, weightTol:5, claddr:"0x0B156192e04bAD92B6C1C13cf8739d14D78D5701"},
+  {name:'MockSnx', addr:'0xbB4B258B362C7d9d07903E8934b45550a4A7F92C', weight:10, weightTol:5, claddr:"0xF9A76ae7a1075Fe7d646b06fF05Bd48b9FA5582e"},
+  {name:'MockUni', addr:'0x32Bd516d7C5cdD918477632558C01aF2663f3F69', weight:10, weightTol:5, claddr:"0x17756515f112429471F86f98D5052aCB6C47f6ee"},
+  {name:'MockYfi', addr:'0xd9D54E7016306A3009629833C2409Fd04F25A118', weight:10, weightTol:5, claddr:"0xC5d1B1DEb2992738C0273408ac43e1e906086B6C"},
+];
 
 let ethConstituentsMainnet = [
   {name:'BTC', addr:'0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', weight:40, weightTol:5, claddr:['0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c']},
@@ -57,11 +59,80 @@ let ethConstituentsMainnet = [
  * gov address:  0xc433c1979917C686B265675b68068B48a7096d8E
  * 
  */
+const uniswapFactoryAddress = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+
+const bandTestnet = "0xDA7a001b254CD22e46d3eAB04d937489c93174C3";
 
 async function main() {
 
-  await deployKarteraToken();
-  await deployGov();
+  let path = [
+    constituents[5].addr,
+    constituents[2].addr,
+    constituents[4].addr,
+    // constituents[4].addr,
+  ];
+
+  // let route = await getUniRoute(uniswapFactoryAddress, path);
+
+  // console.log('route ', route.pairsArr );
+
+  // let pair = await getUniPair(uniswapFactoryAddress, constituents[4].addr, constituents[2].addr);
+
+  // console.log('pair: ', pair );
+
+  let karteraPriceOracle4Addr = "0xff2295bC6b8e08bE05A248C04313342Cc3e1e8E6";
+
+  // let gas = await estimateDeployGas("KarteraPriceOracle4", uniswapFactoryAddress);
+  const KarteraPriceOracle4 = await ethers.getContractFactory("KarteraPriceOracle4");
+  // const karteraPriceOracle4 = await KarteraPriceOracle4.deploy(uniswapFactoryAddress);
+  const karteraPriceOracle4 = await KarteraPriceOracle4.attach(karteraPriceOracle4Addr);
+  // console.log('karteraPriceOracle4 address: ', karteraPriceOracle4.address );
+  // await karteraPriceOracle4.deployed();
+
+  // await karteraPriceOracle4.addUniPairs(constituents[5].addr, route.pairsArr.length, route.pairsArr, route.invertArr);
+
+  console.log('done adding pairs: ');
+
+  let prcMkr = await karteraPriceOracle4.price(constituents[2].addr);
+  console.log('prcMkr: ', prcMkr.toString() );
+
+  let prcYfi = await karteraPriceOracle4.price(constituents[5].addr);
+  console.log('prcYfi: ', prcYfi.toString() );
+
+  //add MKR
+  // await karteraPriceOracle4.addToken(constituents[2].addr, [constituents[2].addr, constituents[4].addr]);
+  // console.log('added mkr: ',  );
+  // await karteraPriceOracle4.addToken(constituents[3].addr, [constituents[3].addr, constituents[4].addr]);
+  // console.log('added snx: ',  );
+  // await karteraPriceOracle4.addToken(constituents[5].addr, [constituents[5].addr, constituents[4].addr]);
+  // console.log('added yfi: ',  );
+
+  // let mkrPrice = await karteraPriceOracle4.price(constituents[2].addr);
+  // let snxPrice = await karteraPriceOracle4.price(constituents[3].addr);
+  // // let yfiPrice = await karteraPriceOracle4.price(constituents[5].addr);
+
+  // console.log('mkrPrice: ', mkrPrice.toString() );
+  // console.log('snxPrice: ', snxPrice.toString() );
+  // console.log('yfiPrice: ', yfiPrice.toString() );
+
+  // const KarteraPriceOracle3 = await ethers.getContractFactory("KarteraPriceOracle3");
+  // let deploytx = await KarteraPriceOracle3.getDeployTransaction(bandTestnet);
+  // let gascost = await ethers.provider.estimateGas(deploytx);
+  // console.log('gascost: ', gascost.toString() );
+  // const karteraPriceOracle3 = await KarteraPriceOracle3.deploy(bandTestnet);
+  // const karteraPriceOracle3 = await KarteraPriceOracle3.attach("0x52480065b0AB39117F737E61AeD44D5E1B0005DE");
+  // console.log('KarteraPriceOracle3 address: ', karteraPriceOracle3.address );
+  // // await karteraPriceOracle3.deployed();
+
+  // await karteraPriceOracle3.addBandToken(ethConstituentsMainnet[2].addr, "LINK", "USD");
+
+  // let price = await karteraPriceOracle3.price(ethConstituentsMainnet[2].addr);
+
+  // console.log('price: ', price.toString() );
+
+
+  // await deployKarteraToken();
+  // await deployGov();
 
   // await loadContracts('kovan');
 
@@ -306,6 +377,34 @@ async function main() {
   // await updateConstituentByIndex(4);
 
   console.log('done...');
+
+}
+
+async function getUniRoute(FACTORY_ADDRESS:string, path:any) {
+  let pairsArr=new Array();
+  let invertArr=new Array();
+  for(let i=0; i<path.length-1; i++) {
+    let invert = path[i]<path[i+1]? false: true;
+    let pair = '';
+    if(invert){
+      pair = await getUniPair(FACTORY_ADDRESS, path[i+1], path[i]);
+    }else{
+      pair = await getUniPair(FACTORY_ADDRESS, path[i], path[i+1]);
+    }
+    pairsArr.push(pair);
+    invertArr.push(invert);
+  }
+  return {pairsArr, invertArr};
+}
+
+async function getUniPair(FACTORY_ADDRESS:string, tokenA:string, tokenB:string) {
+  let pair = getCreate2Address(
+    FACTORY_ADDRESS,
+    keccak256(['bytes'], [pack(['address', 'address'], [tokenA, tokenB])]),
+    INIT_CODE_HASH
+  );
+
+  return pair;
 
 }
 
@@ -640,6 +739,13 @@ async function deployMockContracts() {
 
     await token.deployed();
   }
+}
+
+async function estimateDeployGas (contract:string, inputs:any){
+  const ContractABI = await ethers.getContractFactory(contract)
+  let tx = ContractABI.getDeployTransaction(inputs);
+  let gasrequired = await ethers.provider.estimateGas(tx);
+  console.log('KarteraToken: ', gasrequired.toString() );
 }
 
 async function estimateGas() {

@@ -3,7 +3,7 @@
 pragma solidity  >=0.4.22 <0.8.0;
 pragma experimental ABIEncoderV2;
 
-interface IBasketLib {
+interface IBasketLibV3 {
 
     /** 
         constituentAddress: constituent address
@@ -68,13 +68,13 @@ interface IBasketLib {
     function updateConstituent(address conaddr, uint8 weight, uint8 weightTolerance) external;
 
     /// @notice external call to depoit tokens to basket and receive equivalent basket tokens
-    function makeDepositCheck(address conaddr, uint256 numberoftokens) external view returns (uint256, uint256);
+    function makeDepositCheck(address conaddr, uint256 numberoftokens) external view returns (bool);
 
     /// @notice exchange basket tokens for removed constituent tokens
-    function withdrawInactiveCheck(address conaddr, uint256 numberoftokens) external view returns(uint256, uint256);
+    function withdrawInactiveCheck(address conaddr, uint256 numberoftokens) external view returns(bool);
 
     /// @notice exchange basket tokens for active constituent tokens
-    function withdrawActiveCheck(address conaddr, uint256 numberoftokens) external view returns(uint256, uint256);
+    function withdrawActiveCheck(address conaddr, uint256 numberoftokens) external view returns(bool);
 
     /// @notice update add constituent deposit value after makedeposit
     function AddDeposit(address conaddr, uint256 numberoftokens) external;
