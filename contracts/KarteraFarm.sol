@@ -5,29 +5,51 @@ pragma solidity  >=0.4.22 <0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./interfaces/IPriceOracle.sol";
+import "./SwapBasket.sol";
+import "./KarteraToken.sol";
 
 // Deposit kartera token here to receive xKart tokens and get rewards in wEth
 //
 // This contract handles swapping to and from xSushi, SushiSwap's staking token.
-contract KarteraFarm is ERC20("Kartera Farm", "xKART"){
+contract KarteraFarm is ERC20("Kartera Farm Token", "xKART"){
     using SafeMath for uint256;
-    IERC20 public karteraToken;
+    address karteraTokenAddress;
+    KarteraToken public kart;
     address[] baskets;
+    IPriceOracle karteraPriceOracle;
+    // flag to request price from oracle can only be set true 
+    // default price is $0.00001
+    bool public exPrice = false;
 
     address public manager;
 
     modifier onlyManager() {
-        require(msg.sender == manager || msg.sender == owner());
+        require(msg.sender == manager);
         _;
     }
 
-    constructor(address karteraTokenAddr) public {
+    constructor(address karteraTokenAddr, address priceOracle) public {
         manager = msg.sender;
-        karteraToken = IERC20(karteraTokenAddr);
+        karteraTokenAddress = karteraTokenAddr;
+        kart = KarteraToken(karteraTokenAddr);
+        karteraPriceOracle = IPriceOracle(priceOracle);
     }
 
-    function transferManager(address newmanager) external onlyManagerOrOwner {
+    function setUseExPrice() external onlyManager {
+        exPrice = true;
+    }
+
+    function setPriceOracle(address priceOracle) external onlyManager {
+        karteraPriceOracle = IPriceOracle(priceOracle);
+    }
+
+    function transferManager(address newmanager) external onlyManager {
         manager = newmanager;
+    }
+
+    function numberOfBaskets () external view returns (uint256) {
+        return baskets.length;
     }
 
     function addBasket(address basketaddr) external onlyManager{
@@ -40,47 +62,89 @@ contract KarteraFarm is ERC20("Kartera Farm", "xKART"){
         baskets.push(basketaddr);
     }
 
-    function basketsValue () internal returns (uint256) {
-        uint256 totalvalue = 0;
+    function basketValue (uint256 indx) public view returns (uint256 value) {
+        SwapBasket swapbasket = SwapBasket(baskets[indx]);
+        uint256 bal = swapbasket.balanceOf(address(this));
+        value = bal.mul(swapbasket.basketTokenPrice()).div(1e18);
+    }
+
+    function basketsValue () internal view returns (uint256 totalvalue) {
+        totalvalue = 0;
         for(uint256 i=0; i<baskets.length; i++) {
-            SwapBasket swapbasket = SwapBasket(baskets[i]);
-            uint256 bal = swapbasket.balanceOf(address(this));
-            totalvalue += bal.mul(swaplib.basketTokenPrice());
+            totalvalue = totalvalue.add(basketValue(i));
         }
-        return totalvalue;
+    }
+
+    function kartValue (uint tokens) public view returns (uint256 value) {
+        uint256 prc = 1e13;
+        uint8 dec = 18;
+        if(exPrice){
+            (prc,  dec) = karteraPriceOracle.price(karteraTokenAddress);
+        }
+        value = prc.mul(tokens).div(power(10, dec));
+    }
+
+    function xKartPrice () public view returns (uint256 value) {
+        value = totalAssetValue().mul(1e18).div(totalSupply());
+    }
+
+    function totalAssetValue () public view returns (uint256 value) {
+        uint kartBal = kart.balanceOf(address(this));
+        value = kartValue(kartBal) + basketsValue();
     }
 
     // Deposit your kart token here and start earning rewards
-    function deposit(uint256 numberOfKart) public {
+    function deposit(uint256 numberOfKart) external {
         // use dollar value of all baskets + exiting xKart in farm to issue new xKart
-        uint256 totalvalue = basketsValue();
+        uint256 totalvalue = totalAssetValue();
         
         uint256 totalsupply = totalSupply();
-        // If totalvalue=0 or totalsupply = 0 mint it 1:1 xKart
+        // If totalvalue=0 or totalsupply = 0 mint 1:1 Kart:xKart
         if (totalvalue == 0 || totalsupply == 0) {
             _mint(msg.sender, numberOfKart);
         } 
         else {
-            uint256 xkartreceived = numberOfKart.mul(totalsupply).div(totalvalue);
+            uint256 xkartreceived = kartValue(numberOfKart).mul(totalsupply).div(totalvalue);
             _mint(msg.sender, xkartreceived);
         }
-        // Lock the Sushi in the contract
-        sushi.transferFrom(msg.sender, address(this), _amount);
+        kart.transferFrom(msg.sender, address(this), numberOfKart);
     }
 
-    // Leave the bar. Claim back your SUSHIs.
-    // Unclocks the staked + gained Sushi and burns xSushi
-    function withdraw(uint256 _share) public {
-        // Gets the amount of xSushi in existence
-        uint256 totalShares = totalSupply();
-        // Calculates the amount of Sushi the xSushi is worth
-        uint256 what = _share.mul(sushi.balanceOf(address(this))).div(totalShares);
-        _burn(msg.sender, _share);
-        sushi.transfer(msg.sender, what);
-    }
-}
+    // Leave the farm and claim rewards
+    // burns xKART
+    function withdraw(uint256 numberoftokens) external {
+        uint256 totalsupply = totalSupply();
+        uint256 totalValue = totalAssetValue();
+        uint256 kartBal = kart.balanceOf(address(this));
+        uint256 lockedKartVal = kartValue(kartBal);
+        // value of tokens sent : tokens*value of xKart
+        uint256 xKartVal = numberoftokens.mul(xKartPrice()).div(1e18);
+        _burn(msg.sender, numberoftokens);
+        if(xKartVal <= lockedKartVal){
+            uint256 tokensredeemed = xKartVal.mul(1e18).div(kartValue(1e18));    
+            kart.transfer(msg.sender, tokensredeemed);
+        }
+        else{
+            kart.transfer(msg.sender, kartBal);
+            xKartVal = xKartVal.sub(lockedKartVal);
+            for(uint256 i=0; i<baskets.length; i++){
+                SwapBasket swapbasket = SwapBasket(baskets[i]);
+                uint256 bVal = basketValue(i);
+                if(xKartVal <= bVal){
+                    uint256 tokensredeemed = xKartVal.mul(1e18).div(swapbasket.basketTokenPrice());
+                    swapbasket.transfer(msg.sender, tokensredeemed);
+                    break;
+                }else{
+                    uint256 tokensredeemed = swapbasket.balanceOf(address(this));
+                    swapbasket.transfer(msg.sender, tokensredeemed);
+                    xKartVal = xKartVal.sub(bVal);
+                }
+            }
 
-interface SwapBasket {
-    function basketTokenPrice() external view returns (uint256);
-    function balanceOf(address) external view returns (uint256);
+        }
+    }
+
+    function power(uint256 a, uint8 b) internal pure returns(uint256) {
+        return a ** b;
+    }
 }

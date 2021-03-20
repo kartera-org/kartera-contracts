@@ -12,7 +12,7 @@ import "@nomiclabs/hardhat-waffle";
 // TODO: reenable solidity-coverage when it works
 // import "solidity-coverage";
 
-const localhost_PRIVATE_KEY = process.env.ACCOUNT2_PRIVATE_KEY || "";
+const localhost_PRIVATE_KEY = process.env.LOCALHOST_PRIVATE_KEY || "";
 const INFURA_API_KEY = process.env.INFURA_API_KEY0 || "";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || ""; // well known private key
 const PRIVATE_KEY2 = process.env.PRIVATE_KEY2 || ""; // well known private key
@@ -38,7 +38,7 @@ const config: HardhatUserConfig = {
       // gas: 10000000,
       // blockGasLimit: 10000000,
       // gasMultiplier: 10,
-      // url: `HTTP://127.0.0.1:7545`,
+      // url: `HTTP://127.0.0.1:8545`,
       // accounts: [localhost_PRIVATE_KEY],
     },
     mainnet: {
@@ -53,6 +53,8 @@ const config: HardhatUserConfig = {
     kovan: {
       url: `https://kovan.infura.io/v3/${INFURA_API_KEY}`,
       accounts: [PRIVATE_KEY],
+      gas:'auto',
+      gasPrice:100000000000,
     },
     coverage: {
       url: "http://127.0.0.1:8555", // Coverage launches its own ganache-cli client

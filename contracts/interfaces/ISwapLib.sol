@@ -27,6 +27,9 @@ interface ISwapLib {
     /// @notice set price oracle
     function setPriceOracle(address kpoaddress) external;
 
+    /// @notice set swap fees
+    function setSwapFees(uint16 _fee, uint16 _govfee) external;
+
     /// @notice add constituent to a basket
     function addConstituent(address conaddr) external;
 
@@ -37,14 +40,11 @@ interface ISwapLib {
     function removeConstituent(address conaddr) external;
 
     /// @notice external call to depoit tokens to basket and receive equivalent basket tokens
-    function addLiquidity(address sender, address conaddr, uint256 numberoftokens) external returns (uint256);
+    function addLiquidity(address conaddr, uint256 numberoftokens) external returns (uint256);
 
     /// @notice exchange basket tokens for constituent tokens
-    function withdrawLiquidity(address sender, address conaddr, uint256 numberoftokens) external returns(uint256);
+    function withdrawLiquidity(address conaddr, uint256 numberoftokens) external returns(uint256, uint256);
     
-    /// @notice exchange basket tokens for constituent tokens, this will incur fees
-    function emergencyWithdrawLiquidity(address sender, address conaddr, uint256 numberoftokens) external returns(uint256, uint256);
-
     /// @notice get all constituents including active and inactive
     function constituentAddress(uint16) external view returns (address);
 
@@ -70,15 +70,27 @@ interface ISwapLib {
     function exchangeRate(address conaddr) external view returns (uint256);
         
     /// @notice get fee to swap one token for another
-    function fee() external view returns (uint8);
+    function fee() external view returns (uint16);
 
     /// @notice portion of fee allocated to gov contract
-    function govFee() external view returns (uint8);
+    function govFee() external view returns (uint16);
+
+    /// @notice withdraw cost in kartera tokens per $100
+    function withdrawCostMultiplier() external view returns(uint256);
+
+    /// @notice set withdrawcostmultiplier 
+    function setWithdrawCostMultiplier(uint256 withdrawcostmultiplier) external;
+
+    /// @notice get withdrawCost for number of basket tokens
+    function withdrawCost(uint256 numberOfBasketTokens) external view returns (uint256);
 
     /// @notice swap limit per trade 
     function swapLimit() external view returns (uint8);
 
     /// @notice swap tokenA for tokenB
-    function swap(address tokenA, address tokenB, uint256 amount) external view returns (uint256, uint256);
+    function swap(address tokenA, address tokenB, uint256 amount) external returns (uint256, uint256);
+
+    /// @notice get swap rate for 1 tokenA to tokenB
+    function swapRate(address tokenA, address tokenB) external view returns (uint256);
 
 }

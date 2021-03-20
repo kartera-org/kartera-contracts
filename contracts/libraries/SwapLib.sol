@@ -40,36 +40,27 @@ contract SwapLib is ISwapLib {
     // map of constituent address by index
     mapping (uint16 => address) public override constituentAddress;
 
-    // minimum # of block after with lp withdrawals does not incur fee aprox 2 day
-    uint256 lpBlocksReq = 130000;
-
-    // map of lp provider address to block time when deposited withdrawals less the x blocks will incur trading fees
-    mapping (address => uint256) lpStartBlock;
-    
     // total trading fee
-    uint8 public override fee = 30;
+    uint16 public override fee = 30;
 
     // trading fee to Gov token holders
-    uint8 public override govFee = 5;
+    uint16 public override govFee = 5;
 
     // maximum swap amount allowed to receive
-    uint8 public override swapLimit = 1;
+    uint8 public override swapLimit = 10;
+
+    // withdraw liquidity cost in 1 kartera tokens per withdrawCostMultiplier(100) dollars
+    uint256 public override withdrawCostMultiplier = 100;
 
     // internal (dummy) address for ether to add to constituents map
     address ethAddress = address(0x0000000000000000000000000000000000000001);
 
     /// @notice contract constructor make sender the manger and sets governance token to zero address
     constructor(address basketaddr, address kpo) public {
-        manager = msg.sender;
+        manager = basketaddr;
         basketaddress = basketaddr;
         karteraPriceOracleAddress = kpo;
         karteraPriceOracle = IPriceOracle(kpo);
-    }
-
-    /// @notice transfer manager
-    function transferManager(address newmanager) external {
-        require(msg.sender==manager, "Only manager can assign new manager" );
-        manager = newmanager;
     }
 
     /// @notice set price oracle
@@ -77,7 +68,38 @@ contract SwapLib is ISwapLib {
         require(msg.sender==manager, "Sender not manager" );
         karteraPriceOracleAddress = kpoaddress;
         karteraPriceOracle = IPriceOracle(kpoaddress);
-    } 
+    }
+
+    function setSwapFees(uint16 _fee, uint16 _govfee) external override{
+        require(msg.sender==manager, "Sender not manager" );
+        fee = _fee;
+        govFee = _govfee;
+    }
+
+    function getSwapFee(address token, uint256 amount) public view returns(uint16) {
+        uint256 bal=0;
+        if(token!=ethAddress){
+            IERC20 tkn = IERC20(token);
+            bal = tkn.balanceOf(basketaddress);
+        }else{
+            bal = basketaddress.balance;
+        }
+        uint16 ordersize = uint16(amount.mul(100).div(bal));
+        if(ordersize<1){
+            return fee;
+        }else{
+            if(ordersize>100)
+            {
+                ordersize=10;
+            }
+            return fee * ordersize;
+        }
+    }
+
+    function setWithdrawCostMultiplier(uint256 withdrawcostmultiplier) external override {
+        require(msg.sender==manager, "Sender not manager" );
+        withdrawCostMultiplier = withdrawcostmultiplier;
+    }
 
     /// @notice add constituent to a basket
     function addConstituent(address conaddr) external override {
@@ -114,43 +136,38 @@ contract SwapLib is ISwapLib {
         numberOfActiveConstituents--;
     }
 
-    function addLiquidity(address sender, address conaddr, uint256 numberoftokens) external override returns (uint256){
+    function addLiquidity(address conaddr, uint256 numberoftokens) external override returns (uint256){
         require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
         require( constituents[conaddr].active, "Constituent is not active");
         (uint256 prc, uint8 decs) = constituentPrice(conaddr);
         uint256 amount = SafeMath.mul(numberoftokens, prc).div(power(10, decs));
         uint256 minttokens = tokensForDeposit(amount);
-        lpStartBlock[sender] = block.number;
         constituents[conaddr].totalDeposit += numberoftokens;
         return (minttokens);
     }
 
-    function withdrawLiquidity(address sender, address conaddr, uint256 numberoftokens) external override returns(uint256) {
+    function withdrawLiquidity(address conaddr, uint256 numberoftokens) external override returns(uint256, uint256) {
         require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
-        uint256 blocksAhead = block.number - lpStartBlock[sender];
-        require(blocksAhead >= lpBlocksReq, 'Cannot withdraw liquidity, use emergency withdraw instead');
         uint256 tokenprice = basketTokenPriceI();
-        uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice).div(basketDecimals);
-        uint256 tokensredeemed = depositsForDollar(conaddr, dollaramount);
-        IERC20 rToken = IERC20(conaddr);
-        uint256 tokenBal = rToken.balanceOf(basketaddress);
-        require(tokenBal > tokensredeemed, 'Not enough tokens available for withdrawal');
-        constituents[conaddr].totalDeposit -= numberoftokens;
-        return (tokensredeemed);
-    }
+        uint256 dollaramount = SafeMath.mul(numberoftokens, tokenprice);
 
-    function emergencyWithdrawLiquidity(address sender, address conaddr, uint256 numberoftokens) external override returns(uint256, uint256) {
-        require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
-        uint256 tokenprice = basketTokenPriceI();
-        uint256 actualTokens = SafeMath.mul(numberoftokens, fee).div(10000);
-        uint256 dollaramount = SafeMath.mul(actualTokens, tokenprice).div(basketDecimals);
+        uint256 cost = dollaramount.div(withdrawCostMultiplier).div(basketDecimals);
+        dollaramount = dollaramount.div(basketDecimals);
+
+
         uint256 tokensredeemed = depositsForDollar(conaddr, dollaramount);
-        IERC20 rToken = IERC20(conaddr);
-        uint256 tokenBal = rToken.balanceOf(basketaddress);
+
+        uint256 tokenBal = 0;
+        if(conaddr!=ethAddress){
+            IERC20 rToken = IERC20(conaddr);
+            tokenBal = rToken.balanceOf(basketaddress);
+        }else{
+            tokenBal = basketaddress.balance;
+        }
         require(tokenBal > tokensredeemed, 'Not enough tokens available for withdrawal');
-        constituents[conaddr].totalDeposit -= actualTokens;
-        uint256 govShare = numberoftokens*govFee;
-        return (tokensredeemed, govShare);
+        constituents[conaddr].totalDeposit -= tokensredeemed;
+        
+        return (tokensredeemed, cost);
     }
 
     function constituentInfo(address conaddr) external view override returns (address, bool, uint256, uint8) {
@@ -194,6 +211,10 @@ contract SwapLib is ISwapLib {
         return basketTokenPriceI();
     }
 
+    function withdrawCost(uint256 numberOfBasketTokens) external view override returns (uint256) {
+        return numberOfBasketTokens.mul(basketTokenPriceI()).div(withdrawCostMultiplier).div(basketDecimals);
+    }
+
     /// @notice gets exchangerate for a constituent token 1token = ? basket tokens
     function exchangeRate(address conaddr) external view override returns (uint256) {
         require(constituents[conaddr].constituentAddress == conaddr, 'Constituent does not exist');
@@ -202,6 +223,8 @@ contract SwapLib is ISwapLib {
         uint256 tokens = tokensForDeposit(amount);
         return tokens;
     }
+
+
 
     /// @notice # of basket tokens for deposit $ amount 
     function tokensForDeposit(uint amount) public view returns (uint256) {
@@ -223,42 +246,64 @@ contract SwapLib is ISwapLib {
         return x;
     }
 
-    function swap(address tokenA, address tokenB, uint256 amount) external view override returns (uint256, uint256) {
+    function swap(address tokenA, address tokenB, uint256 amount) external override returns (uint256, uint256) {
         (uint256 prcA, uint8 decA) = karteraPriceOracle.price(tokenA);
         (uint256 prcB, uint8 decB) = karteraPriceOracle.price(tokenB);
-        uint256 d = 100;
-        uint256 swapFee = SafeMath.mul(amount, fee).div(10000);
+        
+        uint256 tokensReceived = amount.mul(prcA).mul(power(10, decB));
+        tokensReceived = tokensReceived.div(power(10, decA)).div(prcB);
 
-        uint256 tokensReceived = (amount - swapFee) * prcA * power(10, decB-decA) / prcB;
+        uint256 swapFee = tokensReceived.mul(getSwapFee(tokenB, tokensReceived)).div(10000);
 
-        uint256 tokensToGov = SafeMath.mul(amount, govFee).div(10000);
+        tokensReceived = tokensReceived.sub(swapFee);
+
+        uint256 tokensToGov =amount.mul(govFee).div(10000);
         tokensToGov = SafeMath.mul(tokensToGov, prcA).div(power(10, decA));
-        uint256 govShare = tokensForDeposit(tokensToGov);
+        tokensToGov = tokensForDeposit(tokensToGov);
 
-        IERC20 token = IERC20(tokenB);
-        uint256 bal = token.balanceOf(basketaddress);
-        uint256 lim = SafeMath.mul(bal, swapLimit).div(100);
-        require(lim >= tokensReceived, 'Swap exceeds limit');        
-
-        return (tokensReceived, govShare);
-    }
-
-    function copyState(address oldcontainer) public {
-        require(msg.sender==manager, "Sender not manager" );
-        ISwapLib basketInterface = ISwapLib(oldcontainer);
-        uint16 n = basketInterface.numberOfConstituents();
-        for(uint16 i=0; i<n; i++){
-            address conaddr = basketInterface.constituentAddress(i);
-            constituentAddress[i] = conaddr;
-            (address conaddr_, bool active, uint256 td, uint8 decimals) = basketInterface.constituentInfo(conaddr);
-            constituents[conaddr].constituentAddress = conaddr_;
-            constituents[conaddr].id = i;
-            constituents[conaddr].active = active;
-            constituents[conaddr].totalDeposit = td;
-            constituents[conaddr].decimals = decimals;
+        constituents[tokenA].totalDeposit = constituents[tokenA].totalDeposit.add(amount);
+        constituents[tokenB].totalDeposit = constituents[tokenB].totalDeposit.sub(tokensReceived);
+        uint256 bal = 0;
+        if(tokenB!=ethAddress){
+            IERC20 tokenb = IERC20(tokenB);
+            bal = tokenb.balanceOf(basketaddress);
+        }else{
+            bal = basketaddress.balance;
         }
+        uint256 lim = SafeMath.mul(bal, swapLimit).div(100);
+        require(lim >= tokensReceived, 'Swap exceeds limit');
 
+        return (tokensReceived, tokensToGov);
     }
+
+    function swapRate(address tokenA, address tokenB) external view override returns (uint256) {
+        (uint256 prcA, uint8 decA) = karteraPriceOracle.price(tokenA);
+        (uint256 prcB, uint8 decB) = karteraPriceOracle.price(tokenB);
+        uint256 amount = 1e18;
+        uint16 swapfee = getSwapFee(tokenA, amount);
+        uint256 swapFee = SafeMath.mul(amount, swapfee).div(10000);
+        uint256 tokensReceived = amount.sub(swapFee);
+        tokensReceived = tokensReceived.mul(prcA).mul(power(10, decB));
+        tokensReceived = tokensReceived.div(power(10, decA)).div(prcB);
+        return tokensReceived;
+    }
+
+    // function copyState(address oldcontainer) public {
+    //     require(msg.sender==manager, "Sender not manager" );
+    //     ISwapLib basketInterface = ISwapLib(oldcontainer);
+    //     uint16 n = basketInterface.numberOfConstituents();
+    //     for(uint16 i=0; i<n; i++){
+    //         address conaddr = basketInterface.constituentAddress(i);
+    //         constituentAddress[i] = conaddr;
+    //         (address conaddr_, bool active, uint256 td, uint8 decimals) = basketInterface.constituentInfo(conaddr);
+    //         constituents[conaddr].constituentAddress = conaddr_;
+    //         constituents[conaddr].id = i;
+    //         constituents[conaddr].active = active;
+    //         constituents[conaddr].totalDeposit = td;
+    //         constituents[conaddr].decimals = decimals;
+    //     }
+
+    // }
 
     function power(uint256 a, uint8 b) internal pure returns(uint256) {
         return a ** b;

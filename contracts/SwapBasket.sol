@@ -13,10 +13,17 @@ import "./interfaces/ISwapLib.sol";
 /// @title SwapBasket 
 contract SwapBasket is ERC20("Kartera Swap Basket", "kETH"), Ownable {
 
+    event AddLiquidity(address indexed lpuser, address indexed swpaddr, uint256 amount);
+    event WithdrawLiquidity(address indexed lpuser, address indexed swpaddr, uint256 amount);
+    event Swap( address indexed lpuser, address indexed swpaddrFrom, address indexed swpaddrTo, uint256 amount );
+
     address public manager;
 
+    // kartera Token
+    IERC20 karteraToken;
+
     // swap Library contract address
-    address public swapLibAddress;
+    address swapLibAddress;
 
     // library to handle functionalities
     ISwapLib swapLib;
@@ -24,15 +31,22 @@ contract SwapBasket is ERC20("Kartera Swap Basket", "kETH"), Ownable {
     // kartFarm receives part of swap fee as basket tokens to be distributed among kart holders
     address kartFarm;
 
+    // swapFarm 
+    address swapFarm;
+
     // internal (dummy) address for ether to add to constituents map
     address ethAddress = address(0x0000000000000000000000000000000000000001);
 
-    /// @notice pause deposit withdraw if library interface is changing
+    /// @notice pause deposit, withdraw if library interface is changing
     bool public pause_ = true;
 
+    /// @notice pause swap/trading
+    bool public tradingAllowed_ = false;
+
     /// @notice contract constructor makes sender the manger
-    constructor() public {
+    constructor(address karteratoken) public {
         manager = msg.sender;
+        karteraToken = IERC20(karteratoken);
     }
 
     modifier onlyManagerOrOwner() {
@@ -59,12 +73,29 @@ contract SwapBasket is ERC20("Kartera Swap Basket", "kETH"), Ownable {
         pause_ = false;
     }
 
+    function pauseTrading() external onlyManagerOrOwner {
+        tradingAllowed_ = false;
+    }
+
+    function unpauseTrading() external onlyManagerOrOwner {
+        tradingAllowed_ = true;
+    }
+
     function setPriceOracle(address kpoaddress) external onlyManagerOrOwner {
         swapLib.setPriceOracle(kpoaddress);
     }
 
     function setKartFarmAddress(address kartfarm) external onlyManagerOrOwner {
         kartFarm = kartfarm;
+    }
+
+    function setSwapFarmAddress(address swapfarm) external onlyManagerOrOwner {
+        swapFarm = swapfarm;
+    }
+
+    function setSwapFees(uint8 _fee, uint8 _govfee) external onlyManagerOrOwner{
+        require(pause_, 'Contract is not paused');
+        swapLib.setSwapFees(_fee, _govfee);
     }
 
     /// @notice add constituent to a swap basket
@@ -96,36 +127,27 @@ contract SwapBasket is ERC20("Kartera Swap Basket", "kETH"), Ownable {
         }else{
             require(numberoftokens<=msg.value, 'Incorrect deposit amount');
         }
-        uint256 minttokens = swapLib.addLiquidity(msg.sender, conaddr, numberoftokens);
+        uint256 minttokens = swapLib.addLiquidity(conaddr, numberoftokens);
         _mint(msg.sender, minttokens);
+        
+        emit AddLiquidity(msg.sender, conaddr, numberoftokens);
     }
 
     /// @notice external call to withdraw liquidity from the basket and receive any equivalent tokens requested
     function withdrawLiquidity(address conaddr, uint256 numberoftokens) external payable {
         require(!pause_, 'Contract is paused');
 
-        uint256 tokensredeemed = swapLib.withdrawLiquidity(msg.sender, conaddr, numberoftokens);
+        (uint256 tokensredeemed, uint256 cost) = swapLib.withdrawLiquidity(conaddr, numberoftokens);
+        _burn(msg.sender, numberoftokens);
         if(conaddr!=ethAddress){
             IERC20 token = IERC20(conaddr);
             token.transfer(msg.sender, tokensredeemed);
         }else{
             msg.sender.transfer(tokensredeemed);
         }
-        _burn(msg.sender, numberoftokens);
-    }
+        karteraToken.transferFrom(msg.sender, swapFarm, cost);
 
-    /// @notice external call to emergency withdraw liquidity from the basket and receive any equivalent tokens requested this call incurs swap fee
-    function emergencyWithdrawLiquidity(address conaddr, uint256 numberoftokens) external payable {
-        require(!pause_, 'Contract is paused');
-
-        (uint256 tokensredeemed, uint256 govShare) = swapLib.emergencyWithdrawLiquidity(msg.sender, conaddr, numberoftokens);
-        if(conaddr!=ethAddress){
-            ERC20 token = ERC20(conaddr);
-            token.transfer(msg.sender, tokensredeemed);
-        }else{
-            msg.sender.transfer(tokensredeemed);
-        }
-        _burn(msg.sender, numberoftokens);
+        emit WithdrawLiquidity(msg.sender, conaddr, numberoftokens);
     }
 
     /// @notice get constituent from index
@@ -167,14 +189,46 @@ contract SwapBasket is ERC20("Kartera Swap Basket", "kETH"), Ownable {
         return swapLib.numberOfActiveConstituents();
     }
 
+    /// @notice get withdrawCostMultiplier
+    function withdrawCostMultiplier() external view returns (uint256) {
+        return swapLib.withdrawCostMultiplier();
+    }
+
+    /// @notice set withdrawCostMultiplier
+    function setWithdrawCostMultiplier(uint256 withdrawcostmultiplier) external {
+        swapLib.setWithdrawCostMultiplier(withdrawcostmultiplier);
+    }
+
+    /// @notice get withdrawCost
+    function withdrawCost(uint256 numberOfBasketTokens) external view returns (uint256) {
+        return swapLib.withdrawCost(numberOfBasketTokens);
+    }
+
     /// @notice get number of active constituents
     function swap(address tokenA, address tokenB, uint256 amount) external payable {
-        IERC20 tokena = IERC20(tokenA);
-        tokena.transferFrom(msg.sender, address(this), amount);
+        require(!pause_ && tradingAllowed_, 'Swapping is paused');
+        require(tokenA != tokenB, 'Tokens are same');
+
+        if(tokenA!=ethAddress){
+            IERC20 tokena = IERC20(tokenA);
+            tokena.transferFrom(msg.sender, address(this), amount);
+        }else{
+            require(amount<=msg.value, 'Incorrect deposit amount');
+        }
         (uint256 tokensReceived, uint256 govShare) = swapLib.swap(tokenA, tokenB, amount);
-        // _mint(kartFarm, govShare);
-        IERC20 tokenb = IERC20(tokenB);
-        tokenb.transfer(msg.sender, tokensReceived);
+        _mint(kartFarm, govShare);
+        if(tokenB!=ethAddress){
+            IERC20 tokenb = IERC20(tokenB);
+            tokenb.transfer(msg.sender, tokensReceived);
+        }else{
+            msg.sender.transfer(tokensReceived);
+        }
+        emit Swap( msg.sender, tokenA, tokenB, amount );
+    }
+
+    /// @notice get swap rate for 1 tokenA to tokenB
+    function swapRate(address tokenA, address tokenB) external view returns (uint256){
+        return swapLib.swapRate(tokenA, tokenB);
     }
 
 }
