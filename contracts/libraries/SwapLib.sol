@@ -85,15 +85,11 @@ contract SwapLib is ISwapLib {
             bal = basketaddress.balance;
         }
         uint16 ordersize = uint16(amount.mul(100).div(bal));
-        if(ordersize<1){
-            return fee;
-        }else{
-            if(ordersize>100)
-            {
-                ordersize=10;
-            }
-            return fee * ordersize;
+        if(ordersize>10)
+        {
+            ordersize=10;
         }
+        return fee * (ordersize+1);
     }
 
     function setWithdrawCostMultiplier(uint256 withdrawcostmultiplier) external override {
@@ -140,7 +136,7 @@ contract SwapLib is ISwapLib {
         require(constituents[conaddr].constituentAddress == conaddr, "Constituent does not exist");
         require( constituents[conaddr].active, "Constituent is not active");
         (uint256 prc, uint8 decs) = constituentPrice(conaddr);
-        uint256 amount = SafeMath.mul(numberoftokens, prc).div(power(10, decs));
+        uint256 amount = SafeMath.mul(numberoftokens, prc).div(power(10, constituents[conaddr].decimals));
         uint256 minttokens = tokensForDeposit(amount);
         constituents[conaddr].totalDeposit += numberoftokens;
         return (minttokens);
@@ -190,7 +186,7 @@ contract SwapLib is ISwapLib {
         for(uint8 i = 0; i < numberOfConstituents; i++) {
             address addr = constituentAddress[i];
             (uint prc, uint8 decs) = constituentPrice(addr);
-            uint256 x = SafeMath.mul(prc, constituents[addr].totalDeposit).div(power(10, decs));            
+            uint256 x = SafeMath.mul(prc, constituents[addr].totalDeposit).div(power(10, constituents[addr].decimals));            
             totaldeposit += x;
         }
         return totaldeposit;
@@ -224,25 +220,16 @@ contract SwapLib is ISwapLib {
         return tokens;
     }
 
-
-
     /// @notice # of basket tokens for deposit $ amount 
     function tokensForDeposit(uint amount) public view returns (uint256) {
         uint256 x = SafeMath.mul(amount, basketDecimals).div(basketTokenPriceI());
         return x;
     }
 
-    /// @notice number of constituent tokens for 1 basket token
-    function depositsForTokens(address conaddr, uint numberoftokens) public view returns (uint256) {
-        (uint prc, uint8 decs) = constituentPrice(conaddr);
-        uint256 x = SafeMath.mul(numberoftokens, basketTokenPriceI()).mul(power(10, decs)).div(prc);
-        return x;
-    }
-
-    /// @notice number of inactive constituent tokens for dollar amount 
+    /// @notice number of constituent tokens for dollar amount 
     function depositsForDollar(address conaddr, uint256 dollaramount) public view returns (uint256) {
         (uint prc, uint8 decs) = constituentPrice(conaddr);
-        uint256 x = SafeMath.mul(dollaramount, power(10, decs)).div(prc);
+        uint256 x = SafeMath.mul(dollaramount, power(10, constituents[conaddr].decimals)).div(prc);
         return x;
     }
 
@@ -251,14 +238,12 @@ contract SwapLib is ISwapLib {
         (uint256 prcB, uint8 decB) = karteraPriceOracle.price(tokenB);
         
         uint256 tokensReceived = amount.mul(prcA).mul(power(10, decB));
-        tokensReceived = tokensReceived.div(power(10, decA)).div(prcB);
+        tokensReceived = tokensReceived.div(power(10, decA)).div(prcB).mul(power(10, constituents[tokenB].decimals)).div(power(10, constituents[tokenA].decimals));
 
-        uint256 swapFee = tokensReceived.mul(getSwapFee(tokenB, tokensReceived)).div(10000);
+        tokensReceived = tokensReceived.sub(tokensReceived.mul(getSwapFee(tokenB, tokensReceived)).div(10000));
 
-        tokensReceived = tokensReceived.sub(swapFee);
-
-        uint256 tokensToGov =amount.mul(govFee).div(10000);
-        tokensToGov = SafeMath.mul(tokensToGov, prcA).div(power(10, decA));
+        uint256 tokensToGov =amount.mul(govFee).div(10000).mul(prcA);
+        tokensToGov = tokensToGov.div(power(10, constituents[tokenA].decimals));
         tokensToGov = tokensForDeposit(tokensToGov);
 
         constituents[tokenA].totalDeposit = constituents[tokenA].totalDeposit.add(amount);
@@ -279,12 +264,9 @@ contract SwapLib is ISwapLib {
     function swapRate(address tokenA, address tokenB) external view override returns (uint256) {
         (uint256 prcA, uint8 decA) = karteraPriceOracle.price(tokenA);
         (uint256 prcB, uint8 decB) = karteraPriceOracle.price(tokenB);
-        uint256 amount = 1e18;
-        uint16 swapfee = getSwapFee(tokenA, amount);
-        uint256 swapFee = SafeMath.mul(amount, swapfee).div(10000);
-        uint256 tokensReceived = amount.sub(swapFee);
-        tokensReceived = tokensReceived.mul(prcA).mul(power(10, decB));
-        tokensReceived = tokensReceived.div(power(10, decA)).div(prcB);
+        uint256 amount = power(10, constituents[tokenA].decimals);
+        uint256 tokensReceived = amount.mul(prcA).mul(power(10, decB));
+        tokensReceived = tokensReceived.div(power(10, decA)).div(prcB).mul(power(10, constituents[tokenB].decimals)).div(power(10, constituents[tokenA].decimals));
         return tokensReceived;
     }
 

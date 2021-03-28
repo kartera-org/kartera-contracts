@@ -66,9 +66,6 @@ contract SwapFarmLib is ISwapFarmLib {
 
         swapBasketsMap[swpBasketAddr].swapBasketAddress = swpBasketAddr;
         swapBasketsMap[swpBasketAddr].allocation = allocation_;
-        swapBasketsMap[swpBasketAddr].id = numberOfBaskets;
-        basketAddress[numberOfBaskets] = swpBasketAddr;
-        numberOfBaskets++;
     }
 
     function rewardsMultiplier(uint256 _start, uint256 _end) internal view returns (uint256) {

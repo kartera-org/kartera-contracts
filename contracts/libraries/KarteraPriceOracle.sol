@@ -20,6 +20,7 @@ contract KarteraPriceOracle is IPriceOracle{
         address[] uniPairs;
         bool[] invert;
         uint uniPairLen;
+        uint8 fixDecimals;
         address[] addrLink;
         uint8 length;
     }
@@ -34,12 +35,13 @@ contract KarteraPriceOracle is IPriceOracle{
         tokenMap[tokenaddress].length = len;
     }
 
-    function addUniPairs(address tokenaddress, uint8 len, address[] calldata pairaddress, bool[] calldata invert) external virtual returns (bool) {
+    function addUniPairs(address tokenaddress, uint8 len, address[] calldata pairaddress, bool[] calldata invert, uint8 fixDecimals) external virtual returns (bool) {
         require(msg.sender == owner, 'Only owner can add new tokens');
         require(len>0, 'incorrect token path');
         tokenMap[tokenaddress].uniPairs = pairaddress;
         tokenMap[tokenaddress].invert = invert;
         tokenMap[tokenaddress].uniPairLen = len;
+        tokenMap[tokenaddress].fixDecimals = fixDecimals;
     }
 
     function clPrice(address tknaddress) public view returns (uint256, uint8, uint) {
@@ -57,25 +59,23 @@ contract KarteraPriceOracle is IPriceOracle{
         return (prc, decimals, timeStamp);
     }
 
-    function getReserves(address pair_, bool invert) public view returns (uint reserveA, uint reserveB) {
+    function getReserves(address pair_, bool invert) public view returns (uint256 reserveA, uint256 reserveB) {
         (uint reserve0, uint reserve1,) = IUniswapV2Pair(pair_).getReserves();
         (reserveA, reserveB) = invert ? (reserve1, reserve0) : (reserve0, reserve1);
     }
 
     function uniPrice(address tknaddress) public view returns (uint256, uint8) {
         require(tokenMap[tknaddress].uniPairLen>0, 'Token pricing pair does not exist');
-        uint256 prc = power(10, defDecimals);
+        uint256 prc = power(10, defDecimals+tokenMap[tknaddress].fixDecimals);
         for(uint8 i=0; i<tokenMap[tknaddress].uniPairLen; i++){
-            (uint reserveA, uint reserveB) = getReserves(tokenMap[tknaddress].uniPairs[i], tokenMap[tknaddress].invert[i]);
+            (uint256 reserveA, uint256 reserveB) = getReserves(tokenMap[tknaddress].uniPairs[i], tokenMap[tknaddress].invert[i]);
 
-            prc = SafeMath.mul(prc, reserveB);
-            prc = SafeMath.div(prc, reserveA);
+            prc = prc.mul(reserveB).div(reserveA);
         }
         return (prc, defDecimals);
     }
 
     function price(address addr) view external override returns (uint256 , uint8) {
-        return (1e18, 18); //for localhost testing
         if(tokenMap[addr].uniPairLen>0 && tokenMap[addr].length>0){
             return aggPrice(addr);
         }

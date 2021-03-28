@@ -13,7 +13,7 @@ import "@nomiclabs/hardhat-waffle";
 // import "solidity-coverage";
 
 const localhost_PRIVATE_KEY = process.env.LOCALHOST_PRIVATE_KEY || "";
-const INFURA_API_KEY = process.env.INFURA_API_KEY0 || "";
+const INFURA_API_KEY = process.env.INFURA_API_KEY1 || "";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || ""; // well known private key
 const PRIVATE_KEY2 = process.env.PRIVATE_KEY2 || ""; // well known private key
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
@@ -40,6 +40,13 @@ const config: HardhatUserConfig = {
       // gasMultiplier: 10,
       // url: `HTTP://127.0.0.1:8545`,
       // accounts: [localhost_PRIVATE_KEY],
+    },
+    gethlocalhost: {
+      // gas: 10000000,
+      // blockGasLimit: 10000000,
+      // gasMultiplier: 10,
+      url: `HTTP://127.0.0.1:8547`,
+      // accounts: [PRIVATE_KEY],
     },
     mainnet: {
       url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
